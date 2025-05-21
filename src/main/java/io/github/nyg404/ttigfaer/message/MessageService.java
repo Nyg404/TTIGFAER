@@ -7,10 +7,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.methods.ForwardMessage;
-import org.telegram.telegrambots.meta.api.methods.send.SendAnimation;
-import org.telegram.telegrambots.meta.api.methods.send.SendAudio;
-import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
-import org.telegram.telegrambots.meta.api.methods.send.SendPhoto;
+import org.telegram.telegrambots.meta.api.methods.send.*;
 import org.telegram.telegrambots.meta.api.objects.InputFile;
 import org.telegram.telegrambots.meta.api.objects.message.Message;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
@@ -168,6 +165,118 @@ public class MessageService implements MessageServicIn {
             client.execute(builder.build());
         } catch (TelegramApiException e) {
             log.error("Ошибка при отправке анимации: {}", e.getMessage(), e);
+        }
+    }
+
+    @Override
+    public void sendVideo(MessageContext ctx, InputFile file) {
+        sendVideo(ctx.getChatId(), file, null);
+    }
+
+    @Override
+    public void sendVideo(MessageContext ctx, InputFile file, VideoOptions options) {
+        sendVideo(ctx.getChatId(), file, options);
+    }
+
+    @Override
+    public void sendVideo(long chatId, InputFile file) {
+        sendVideo(chatId, file, null);
+    }
+
+    @Override
+    public void sendVideo(long chatId, InputFile file, VideoOptions options) {
+        SendVideo.SendVideoBuilder builder = SendVideo.builder()
+                .chatId(chatId)
+                .video(file);
+
+        MessageOptionUtils.applyVideoOptions(builder, options, file);
+
+        try {
+            client.execute(builder.build());
+        } catch (TelegramApiException e) {
+            log.error("Ошибка при отправке видео: {}", e.getMessage(), e);
+        }
+    }
+
+    @Override
+    public void sendDocument(MessageContext ctx, InputFile file) {
+        sendDocument(ctx.getChatId(), file, null);
+    }
+
+    @Override
+    public void sendDocument(MessageContext ctx, InputFile file, DocumentOptions options) {
+        sendDocument(ctx.getChatId(), file, options);
+    }
+
+    @Override
+    public void sendDocument(long chatId, InputFile file) {
+        sendDocument(chatId, file, null);
+    }
+
+    @Override
+    public void sendDocument(long chatId, InputFile file, DocumentOptions options) {
+        SendDocument.SendDocumentBuilder builder = SendDocument.builder()
+                .chatId(chatId)
+                .document(file);
+
+        MessageOptionUtils.applyDocumentOptions(builder, options, file);
+
+        try {
+            client.execute(builder.build());
+        } catch (TelegramApiException e) {
+            log.error("Ошибка при отправке документа: {}", e.getMessage(), e);
+        }
+    }
+
+    @Override
+    public void sendVoice(MessageContext ctx, InputFile file) {
+        sendVoice(ctx.getChatId(), file, null);
+    }
+
+    @Override
+    public void sendVoice(MessageContext ctx, InputFile file, VoiceOptions options) {
+        sendVoice(ctx.getChatId(), file, options);
+    }
+
+    @Override
+    public void sendVoice(long chatId, InputFile file) {
+        sendVoice(chatId, file, null);
+    }
+
+    @Override
+    public void sendVoice(long chatId, InputFile file, VoiceOptions options) {
+        SendVoice.SendVoiceBuilder builder = SendVoice.builder()
+                .chatId(String.valueOf(chatId))
+                .voice(file);
+
+        MessageOptionUtils.applyVoiceOptions(builder, options, file);
+
+        try {
+            client.execute(builder.build());
+        } catch (TelegramApiException e) {
+            log.error("Ошибка при отправке голосового сообщения в чат {}: {}", chatId, e.getMessage(), e);
+        }
+    }
+
+
+    // Location
+    @Override
+    public void sendLocation(MessageContext ctx, double latitude, double longitude) {
+        sendLocation(ctx.getChatId(), latitude, longitude);
+    }
+
+    @Override
+    public void sendLocation(long chatId, double latitude, double longitude) {
+        SendLocation sendLocation = SendLocation.builder()
+                .chatId(String.valueOf(chatId))
+                .latitude(latitude)
+                .longitude(longitude)
+                .build();
+
+        try {
+            client.execute(sendLocation);
+        } catch (TelegramApiException e) {
+            log.error("Ошибка при отправке геолокации в чат {}: {}", chatId, e.getMessage(), e);
         }
     }
 

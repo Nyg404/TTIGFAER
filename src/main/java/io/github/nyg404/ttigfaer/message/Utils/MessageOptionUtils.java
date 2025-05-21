@@ -1,13 +1,7 @@
 package io.github.nyg404.ttigfaer.message.Utils;
 
-import io.github.nyg404.ttigfaer.message.Options.AnimationOptions;
-import io.github.nyg404.ttigfaer.message.Options.AudioOptions;
-import io.github.nyg404.ttigfaer.message.Options.MessageOptions;
-import io.github.nyg404.ttigfaer.message.Options.PhotoOptions;
-import org.telegram.telegrambots.meta.api.methods.send.SendAnimation;
-import org.telegram.telegrambots.meta.api.methods.send.SendAudio;
-import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
-import org.telegram.telegrambots.meta.api.methods.send.SendPhoto;
+import io.github.nyg404.ttigfaer.message.Options.*;
+import org.telegram.telegrambots.meta.api.methods.send.*;
 import org.telegram.telegrambots.meta.api.objects.InputFile;
 
 public class MessageOptionUtils {
@@ -94,6 +88,63 @@ public class MessageOptionUtils {
                 .businessConnectionId(options.getBusinessConnectionId())
                 .messageEffectId(options.getMessageEffectId())
                 .allowPaidBroadcast(options.getAllowPaidBroadcast());
+
+        if (options.getCaptionEntities() != null && !options.getCaptionEntities().isEmpty()) {
+            builder.captionEntities(options.getCaptionEntities());
+        }
+    }
+    public static void applyVideoOptions(SendVideo.SendVideoBuilder<SendVideo, ?> builder, VideoOptions options, InputFile video) {
+        if (options == null) return;
+        builder
+                .video(video)
+                .caption(options.getCaption())
+                .parseMode(options.getParseMode())
+                .disableNotification(options.getDisableNotification())
+                .replyToMessageId(options.getReplyToMessageId())
+                .replyMarkup(options.getReplyMarkup())
+                .duration(options.getDuration())
+                .width(options.getWidth())
+                .height(options.getHeight())
+                .supportsStreaming(options.getSupportsStreaming())
+                .thumbnail(options.getThumbnail())
+                .allowSendingWithoutReply(options.getAllowSendingWithoutReply())
+                .protectContent(options.getProtectContent());
+
+        if (options.getCaptionEntities() != null && !options.getCaptionEntities().isEmpty()) {
+            builder.captionEntities(options.getCaptionEntities());
+        }
+    }
+
+    public static void applyDocumentOptions(SendDocument.SendDocumentBuilder<SendDocument, ?> builder, DocumentOptions options, InputFile document) {
+        if (options == null) return;
+        builder
+                .document(document)
+                .caption(options.getCaption())
+                .parseMode(options.getParseMode())
+                .disableNotification(options.getDisableNotification())
+                .replyToMessageId(options.getReplyToMessageId())
+                .replyMarkup(options.getReplyMarkup())
+                .thumbnail(options.getThumbnail())
+                .allowSendingWithoutReply(options.getAllowSendingWithoutReply())
+                .protectContent(options.getProtectContent());
+
+        if (options.getCaptionEntities() != null && !options.getCaptionEntities().isEmpty()) {
+            builder.captionEntities(options.getCaptionEntities());
+        }
+    }
+    public static void applyVoiceOptions(SendVoice.SendVoiceBuilder<SendVoice, ?> builder, VoiceOptions options, InputFile file) {
+        if (options == null) return;
+
+        builder
+                .voice(file)
+                .caption(options.getCaption())
+                .captionEntities(options.getCaptionEntities())
+                .duration(options.getDuration())
+                .disableNotification(options.getDisableNotification())
+                .replyToMessageId(options.getReplyToMessageId())
+                .replyMarkup(options.getReplyMarkup())
+                .allowSendingWithoutReply(options.getAllowSendingWithoutReply())
+                .protectContent(options.getProtectContent());
 
         if (options.getCaptionEntities() != null && !options.getCaptionEntities().isEmpty()) {
             builder.captionEntities(options.getCaptionEntities());
