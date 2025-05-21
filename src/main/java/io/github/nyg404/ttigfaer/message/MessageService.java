@@ -1,9 +1,8 @@
 package io.github.nyg404.ttigfaer.message;
 
 import io.github.nyg404.ttigfaer.api.Message.MessageContext;
-import io.github.nyg404.ttigfaer.message.Options.AudioOptions;
-import io.github.nyg404.ttigfaer.message.Options.MessageOptions;
-import io.github.nyg404.ttigfaer.message.Options.PhotoOptions;
+import io.github.nyg404.ttigfaer.message.Options.*;
+import io.github.nyg404.ttigfaer.message.Utils.MessageOptionUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -47,21 +46,7 @@ public class MessageService implements MessageServicIn {
                 .chatId(String.valueOf(chatId))
                 .text(text);
 
-        if (options != null) {
-            builder.parseMode(options.getParseMode());
-            builder.disableWebPagePreview(options.getDisableWebPagePreview());
-            builder.disableNotification(options.getDisableNotification());
-            builder.replyToMessageId(options.getReplyToMessageId());
-            builder.replyMarkup(options.getReplyMarkup());
-            builder.entities(options.getEntities());
-            builder.allowSendingWithoutReply(options.getAllowSendingWithoutReply());
-            builder.protectContent(options.getProtectContent());
-            builder.linkPreviewOptions(options.getLinkPreviewOptions());
-            builder.replyParameters(options.getReplyParameters());
-            builder.businessConnectionId(options.getBusinessConnectionId());
-            builder.messageEffectId(options.getMessageEffectId());
-            builder.allowPaidBroadcast(options.getAllowPaidBroadcast());
-        }
+        MessageOptionUtils.applyMessageOptions(builder, options);
 
         try {
             client.execute(builder.build());
@@ -116,29 +101,7 @@ public class MessageService implements MessageServicIn {
                 .chatId(String.valueOf(chatId))
                 .audio(file);
 
-        if (options != null) {
-            builder.messageThreadId(options.getMessageThreadId());
-            builder.replyToMessageId(options.getReplyToMessageId());
-            builder.disableNotification(options.getDisableNotification());
-            builder.replyMarkup(options.getReplyMarkup());
-            builder.performer(options.getPerformer());
-            builder.title(options.getTitle());
-            builder.caption(options.getCaption());
-            builder.parseMode(options.getParseMode());
-            builder.duration(options.getDuration());
-            builder.thumbnail(options.getThumbnail());
-
-            if (options.getCaptionEntities() != null) {
-                builder.captionEntities(options.getCaptionEntities());
-            }
-
-            builder.allowSendingWithoutReply(options.getAllowSendingWithoutReply());
-            builder.protectContent(options.getProtectContent());
-            builder.replyParameters(options.getReplyParameters());
-            builder.businessConnectionId(options.getBusinessConnectionId());
-            builder.messageEffectId(options.getMessageEffectId());
-            builder.allowPaidBroadcast(options.getAllowPaidBroadcast());
-        }
+        MessageOptionUtils.applyAudioOptions(builder, options, file);
 
         try {
             client.execute(builder.build());
@@ -168,21 +131,7 @@ public class MessageService implements MessageServicIn {
                 .chatId(chatId)
                 .photo(file);
 
-        if (options != null) {
-            builder.caption(options.getCaption());
-            builder.parseMode(options.getParseMode());
-
-            if (options.getCaptionEntities() != null) {
-                builder.captionEntities(options.getCaptionEntities());
-            }
-
-            builder.disableNotification(options.getDisableNotification());
-            builder.replyToMessageId(options.getReplyToMessageId());
-            builder.replyMarkup(options.getReplyMarkup());
-            builder.showCaptionAboveMedia(options.getShowCaptionAboveMedia());
-            builder.protectContent(options.getProtectContent());
-            builder.hasSpoiler(options.getHasSpoiler());
-        }
+        MessageOptionUtils.applyPhotoOptions(builder, options, file);
 
         try {
             client.execute(builder.build());
@@ -193,15 +142,33 @@ public class MessageService implements MessageServicIn {
 
     @Override
     public void sendAnimation(MessageContext ctx, InputFile file) {
-        SendAnimation animation = SendAnimation.builder()
-                .chatId(String.valueOf(ctx.getChatId()))
-                .animation(file)
-                .build();
+        sendAnimation(ctx.getChatId(), file, null);
+    }
+
+    @Override
+    public void sendAnimation(MessageContext ctx, InputFile file, AnimationOptions options) {
+        sendAnimation(ctx.getChatId(), file, options);
+    }
+
+    @Override
+    public void sendAnimation(long chatId, InputFile file) {
+        sendAnimation(chatId, file, null);
+    }
+
+
+    @Override
+    public void sendAnimation(long chatId, InputFile file, AnimationOptions options) {
+        SendAnimation.SendAnimationBuilder builder = SendAnimation.builder()
+                .chatId(chatId)
+                .animation(file);
+
+        MessageOptionUtils.applyAnimationOptions(builder, options, file);
 
         try {
-            client.execute(animation);
+            client.execute(builder.build());
         } catch (TelegramApiException e) {
             log.error("Ошибка при отправке анимации: {}", e.getMessage(), e);
         }
     }
+
 }

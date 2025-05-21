@@ -4,6 +4,7 @@ package io.github.nyg404.ttigfaer.message;
 
 
 import io.github.nyg404.ttigfaer.api.Message.MessageContext;
+import io.github.nyg404.ttigfaer.message.Options.AnimationOptions;
 import io.github.nyg404.ttigfaer.message.Options.AudioOptions;
 import io.github.nyg404.ttigfaer.message.Options.MessageOptions;
 import io.github.nyg404.ttigfaer.message.Options.PhotoOptions;
@@ -32,6 +33,11 @@ public interface MessageServicIn {
 
     void sendPhoto(long chatId, InputFile file);
     void sendPhoto(long chatId, InputFile file, PhotoOptions options);
+
     void sendAnimation(MessageContext ctx, InputFile file);
+    void sendAnimation(MessageContext ctx, InputFile file, AnimationOptions options);
+
+    void sendAnimation(long chatId, InputFile file);
+    void sendAnimation(long chatId, InputFile file, AnimationOptions options);
 }
 
