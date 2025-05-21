@@ -2,6 +2,7 @@ package io.github.nyg404.ttigfaer.core.Configuration;
 
 import io.github.nyg404.ttigfaer.api.Interface.CommandHandler;
 import io.github.nyg404.ttigfaer.core.Commands.CommandManager;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
@@ -12,6 +13,7 @@ import org.telegram.telegrambots.client.okhttp.OkHttpTelegramClient;
 import org.telegram.telegrambots.meta.generics.TelegramClient;
 
 import java.util.List;
+import java.util.concurrent.Executor;
 
 @Configuration
 @EnableAsync
@@ -25,8 +27,8 @@ public class TtigfaerAutoConfiguration {
     }
 
     @Bean
-    public CommandManager commandManager(List<CommandHandler> handlers) {
-        return new CommandManager(handlers);
+    public CommandManager commandManager(List<CommandHandler> handlers, @Qualifier("asyncExecutor") Executor asyncExecutor) {
+        return new CommandManager(handlers, asyncExecutor);
     }
 }
 
