@@ -70,7 +70,6 @@ public class CommandManager {
         return method.getParameterCount() == 1 && method.getParameterTypes()[0] == MessageContext.class;
     }
 
-    @Async
     public void dispatch(MessageContext ctx) {
         // 1) Ответ на сообщение бота
         if (ctx.getMessage().getReplyToMessage() != null
