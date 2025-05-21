@@ -6,14 +6,23 @@ on:
       - main
 
 jobs:
-  build:
+  build-deploy:
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v3
 
-      - name: Set up Maven settings.xml
+      - name: Set up JDK 21
+        uses: actions/setup-java@v3
+        with:
+          distribution: temurin
+          java-version: 21
+          server-id: github
+          settings-path: ${{ github.workspace }}/.github/maven
+
+      - name: Create Maven settings.xml
         run: |
-          mkdir -p ~/.m2
+          mkdir -p ${{ github.workspace }}/.github/maven
           echo "<settings>
             <servers>
               <server>
@@ -22,14 +31,9 @@ jobs:
                 <password>${{ secrets.TOKEN }}</password>
               </server>
             </servers>
-            <mirrors>
-              <mirror>
-                <id>github</id>
-                <url>https://maven.pkg.github.com/Ник/Репозиторий</url>
-                <mirrorOf>*</mirrorOf>
-              </mirror>
-            </mirrors>
-          </settings>" > ~/.m2/settings.xml
+          </settings>" > ${{ github.workspace }}/.github/maven/settings.xml
 
-      - name: Build and deploy with Maven
-        run: mvn deploy
+      - name: Build and deploy
+        run: mvn clean deploy
+        env:
+          GITHUB_TOKEN: ${{ secrets.TOKEN }}
