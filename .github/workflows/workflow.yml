@@ -18,20 +18,7 @@ jobs:
           distribution: temurin
           java-version: 21
           server-id: github
-          settings-path: ${{ github.workspace }}/.github/maven
-
-      - name: Create Maven settings.xml
-        run: |
-          mkdir -p ${{ github.workspace }}/.github/maven
-          echo "<settings>
-            <servers>
-              <server>
-                <id>github</id>
-                <username>${{ github.actor }}</username>
-                <password>${{ secrets.TOKEN }}</password>
-              </server>
-            </servers>
-          </settings>" > ${{ github.workspace }}/.github/maven/settings.xml
+          settings-path: ${{ github.workspace }}
 
       - name: Build and deploy
         run: mvn clean deploy
