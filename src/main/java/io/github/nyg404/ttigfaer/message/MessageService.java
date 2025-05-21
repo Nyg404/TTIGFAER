@@ -280,4 +280,22 @@ public class MessageService implements MessageServicIn {
         }
     }
 
+    @Override
+    public void sendStiker(MessageContext ctx, InputFile file) {
+        sendStiker(ctx.getChatId(), file);
+    }
+
+    @Override
+    public void sendStiker(long chatID, InputFile file) {
+        SendSticker sendSticker = SendSticker.builder()
+                .chatId(chatID)
+                .sticker(file)
+                .build();
+        try {
+            client.execute(sendSticker);
+        } catch (TelegramApiException e) {
+            log.error("Ошибка при отправке геолокации в чат {}: {}", chatID, e.getMessage(), e);
+        }
+    }
+
 }

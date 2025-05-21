@@ -61,6 +61,9 @@ public interface MessageServicIn {
     void sendLocation(MessageContext ctx, double latitude, double longitude);
     void sendLocation(long chatId, double latitude, double longitude);
 
+    void sendStiker(MessageContext ctx, InputFile file);
+    void sendStiker(long chatID, InputFile file);
+
 
 }
 
