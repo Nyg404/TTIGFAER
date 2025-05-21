@@ -92,6 +92,7 @@ public class MessageService implements MessageServicIn {
                 .chatId(String.valueOf(targetChatId))
                 .fromChatId(String.valueOf(message.getChatId()))
                 .messageId(message.getMessageId())
+                .protectContent(true)
                 .build();
 
         try {
