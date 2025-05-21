@@ -3,13 +3,10 @@ package io.github.nyg404.ttigfaer.core.Configuration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
-import java.util.concurrent.ThreadPoolExecutor;
 
 @Configuration
-@EnableAsync
 public class AsyncSettings {
     @Bean(name = "taskExecutor")
     @ConditionalOnMissingBean(name = "taskExecutor")
