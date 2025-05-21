@@ -85,7 +85,7 @@ public class CommandManager {
 
         if (ctx.getMessage() != null && (ctx.getMessage().hasAudio() || ctx.getMessage().hasDocument()
                 || ctx.getMessage().hasPhoto() || ctx.getMessage().hasText()
-                || ctx.getMessage().hasAnimation() || ctx.getMessage().hasDice())) {
+                || ctx.getMessage().hasAnimation() || ctx.getMessage().hasDice() || ctx.getMessage().hasVideo() || ctx.getMessage().hasVoice() || ctx.getMessage().hasLocation())) {
             messageHandlers.forEach((key, executor) -> executor.invoke(ctx));
         }
 
