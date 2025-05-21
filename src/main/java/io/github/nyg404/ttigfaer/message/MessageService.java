@@ -3,6 +3,7 @@ package io.github.nyg404.ttigfaer.message;
 import io.github.nyg404.ttigfaer.api.Message.MessageContext;
 import io.github.nyg404.ttigfaer.message.Options.AudioOptions;
 import io.github.nyg404.ttigfaer.message.Options.MessageOptions;
+import io.github.nyg404.ttigfaer.message.Options.PhotoOptions;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -10,10 +11,13 @@ import org.telegram.telegrambots.meta.api.methods.ForwardMessage;
 import org.telegram.telegrambots.meta.api.methods.send.SendAnimation;
 import org.telegram.telegrambots.meta.api.methods.send.SendAudio;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
+import org.telegram.telegrambots.meta.api.methods.send.SendPhoto;
 import org.telegram.telegrambots.meta.api.objects.InputFile;
 import org.telegram.telegrambots.meta.api.objects.message.Message;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.meta.generics.TelegramClient;
+
+import java.awt.*;
 
 /**
  * Сервис для отправки сообщений и мультимедиа в Telegram.
@@ -58,11 +62,19 @@ public class MessageService implements MessageServicIn {
                 .text(text);
 
         if (options != null) {
-            builder.disableNotification(options.isDisableNotification());
-            builder.disableWebPagePreview(options.isDisableWebPagePreview());
             builder.parseMode(options.getParseMode());
+            builder.disableWebPagePreview(options.getDisableWebPagePreview());
+            builder.disableNotification(options.getDisableNotification());
             builder.replyToMessageId(options.getReplyToMessageId());
             builder.replyMarkup(options.getReplyMarkup());
+            builder.entities(options.getEntities());
+            builder.allowSendingWithoutReply(options.getAllowSendingWithoutReply());
+            builder.protectContent(options.getProtectContent());
+            builder.linkPreviewOptions(options.getLinkPreviewOptions());
+            builder.replyParameters(options.getReplyParameters());
+            builder.businessConnectionId(options.getBusinessConnectionId());
+            builder.messageEffectId(options.getMessageEffectId());
+            builder.allowPaidBroadcast(options.getAllowPaidBroadcast());
         }
 
         try {
@@ -137,9 +149,23 @@ public class MessageService implements MessageServicIn {
                 .audio(file);
 
         if (options != null) {
-            builder.disableNotification(options.isDisableNotification());
+            builder.messageThreadId(options.getMessageThreadId());
+            builder.replyToMessageId(options.getReplyToMessageId());
+            builder.disableNotification(options.getDisableNotification());
+            builder.replyMarkup(options.getReplyMarkup());
+            builder.performer(options.getPerformer());
             builder.title(options.getTitle());
+            builder.caption(options.getCaption());
             builder.parseMode(options.getParseMode());
+            builder.duration(options.getDuration());
+            builder.thumbnail(options.getThumbnail());
+            builder.captionEntities(options.getCaptionEntities());
+            builder.allowSendingWithoutReply(options.getAllowSendingWithoutReply());
+            builder.protectContent(options.getProtectContent());
+            builder.replyParameters(options.getReplyParameters());
+            builder.businessConnectionId(options.getBusinessConnectionId());
+            builder.messageEffectId(options.getMessageEffectId());
+            builder.allowPaidBroadcast(options.getAllowPaidBroadcast());
         }
 
         try {
@@ -148,6 +174,48 @@ public class MessageService implements MessageServicIn {
             log.error("Ошибка при отправке аудио в чат {}: {}", chatId, e.getMessage(), e);
         }
     }
+
+    @Override
+    public void sendPhoto(MessageContext ctx, InputFile file) {
+        sendPhoto(ctx.getChatId(), file, null);
+    }
+
+    @Override
+    public void sendPhoto(MessageContext ctx, InputFile file, PhotoOptions options) {
+        sendPhoto(ctx.getChatId(), file, options);
+    }
+
+    @Override
+    public void sendPhoto(long chatId, InputFile file) {
+        sendPhoto(chatId, file, null);
+    }
+
+    @Override
+    public void sendPhoto(long chatId, InputFile file, PhotoOptions options) {
+        SendPhoto.SendPhotoBuilder builder = SendPhoto.builder()
+                .chatId(chatId)
+                .photo(file);
+
+        if (options != null) {
+            builder.caption(options.getCaption());
+            builder.parseMode(options.getParseMode());
+            builder.captionEntities(options.getCaptionEntities());
+            builder.disableNotification(options.getDisableNotification());
+            builder.replyToMessageId(options.getReplyToMessageId());
+            builder.replyMarkup(options.getReplyMarkup());
+            builder.showCaptionAboveMedia(options.getShowCaptionAboveMedia());
+            builder.protectContent(options.getProtectContent());
+            builder.hasSpoiler(options.getHasSpoiler());
+        }
+
+
+        try {
+            client.execute(builder.build());
+        } catch (TelegramApiException e) {
+            log.error("Ошибка отправки фотографии: {}", e.getMessage(), e);
+        }
+    }
+
 
     /**
      * Отправка анимации (GIF/видео) в чат.
@@ -165,4 +233,5 @@ public class MessageService implements MessageServicIn {
             log.error("Ошибка при отправке анимации: {}", e.getMessage(), e);
         }
     }
+
 }

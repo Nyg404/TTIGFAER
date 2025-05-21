@@ -6,6 +6,7 @@ package io.github.nyg404.ttigfaer.message;
 import io.github.nyg404.ttigfaer.api.Message.MessageContext;
 import io.github.nyg404.ttigfaer.message.Options.AudioOptions;
 import io.github.nyg404.ttigfaer.message.Options.MessageOptions;
+import io.github.nyg404.ttigfaer.message.Options.PhotoOptions;
 import org.telegram.telegrambots.meta.api.objects.InputFile;
 import org.telegram.telegrambots.meta.api.objects.message.Message;
 
@@ -17,6 +18,7 @@ public interface MessageServicIn {
     void sendMessage(long chatId, String text, MessageOptions options);
 
     void sendReplayMessage(MessageContext context, String text);
+
     Message sendForwardMessage(MessageContext context, long targetChaId, Message message);
 
     void sendAudio(MessageContext ctx, InputFile file);
@@ -25,6 +27,11 @@ public interface MessageServicIn {
     void sendAudio(long chatId, InputFile file);
     void sendAudio(long chatId, InputFile file, AudioOptions options);
 
+    void sendPhoto(MessageContext ctx, InputFile file);
+    void sendPhoto(MessageContext ctx, InputFile file, PhotoOptions options);
+
+    void sendPhoto(long chatId, InputFile file);
+    void sendPhoto(long chatId, InputFile file, PhotoOptions options);
     void sendAnimation(MessageContext ctx, InputFile file);
 }
 
