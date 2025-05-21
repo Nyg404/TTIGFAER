@@ -1,11 +1,9 @@
 package io.github.nyg404.ttigfaer.core.Commands;
 
-import io.github.nyg404.ttigfaer.api.Annotations.OnMessage;
-import io.github.nyg404.ttigfaer.api.Annotations.OnText;
-import io.github.nyg404.ttigfaer.api.Annotations.RegisterCommand;
-import io.github.nyg404.ttigfaer.api.Annotations.RespondToBotMessage;
+import io.github.nyg404.ttigfaer.api.Annotations.*;
 import io.github.nyg404.ttigfaer.api.Interface.CommandHandler;
 import io.github.nyg404.ttigfaer.api.Message.MessageContext;
+import io.github.nyg404.ttigfaer.core.Enum.HandlerType;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -32,39 +30,47 @@ public class CommandManager {
 
     @PostConstruct
     public void init() {
-        for (Object bean : handlers) {
-            for (Method method : bean.getClass().getDeclaredMethods()) {
-                if (method.isAnnotationPresent(RegisterCommand.class)) {
-                    RegisterCommand annotation = method.getAnnotation(RegisterCommand.class);
-                    String commandName = annotation.value();
+        for (CommandHandler handler : handlers) {
+            for (Method method : handler.getClass().getDeclaredMethods()) {
+                if (method.isAnnotationPresent(Handler.class)) {
+                    Handler annotation = method.getAnnotation(Handler.class);
+                    HandlerType type = annotation.value();
 
                     if (!isValidCommandMethod(method)) {
-                        log.warn("Метод {} в классе {} имеет неверную сигнатуру для команды {}",
-                                method.getName(), bean.getClass().getSimpleName(), commandName);
+                        log.warn("Неверная сигнатура метода {} в классе {}", method.getName(), handler.getClass().getSimpleName());
                         continue;
                     }
 
-                    commands.put(commandName, new CommandExecutor(bean, method));
-                    log.info("Зарегистрирована команда: {} из класса {}", commandName, bean.getClass().getSimpleName());
-                }
+                    CommandExecutor executor = new CommandExecutor(handler, method);
 
-                if (method.isAnnotationPresent(RespondToBotMessage.class)) {
-                    botMessageResponders.put("respondToBotMessage", new CommandExecutor(bean, method));
-                    log.info("Зарегистрирован метод для ответа на сообщение бота: {} из класса {}", method.getName(), bean.getClass().getSimpleName());
-                }
-
-                if (method.isAnnotationPresent(OnText.class)) {
-                    textHandlers.put("onText", new CommandExecutor(bean, method));
-                    log.info("Зарегистрирован метод для обработки текста: {} из класса {}", method.getName(), bean.getClass().getSimpleName());
-                }
-
-                if (method.isAnnotationPresent(OnMessage.class)) {
-                    messageHandlers.put("OnMessage", new CommandExecutor(bean, method));
-                    log.info("Зарегистрирован метод для обработки сообщений: {} из класса {}", method.getName(), bean.getClass().getSimpleName());
+                    String k = handler.getClass().getName() + "#" + method.getName();
+                    switch (type) {
+                        case REGISTER_COMMAND -> {
+                            String[] cmds = annotation.commands();
+                            if(cmds.length == 0){
+                                log.error("Для REGISTER_COMMAND не было указанно команд в методе: {}", method.getName(), handler.getClass().getSimpleName());
+                            } else {
+                                commands.put(k, executor);
+                            }
+                        }
+                        case RESPOND_TO_BOT_MESSAGE -> {
+                            botMessageResponders.put(k, executor);
+                            log.info("Зарегистрирован ответ на сообщение бота: {} из класса {}", method.getName(), handler.getClass().getSimpleName());
+                        }
+                        case ON_TEXT -> {
+                            textHandlers.put(k, executor);
+                            log.info("Зарегистрирован обработчик текста: {} из класса {}", method.getName(), handler.getClass().getSimpleName());
+                        }
+                        case ON_MESSAGE -> {
+                            messageHandlers.put(k, executor);
+                            log.info("Зарегистрирован обработчик сообщений: {} из класса {}", method.getName(), handler.getClass().getSimpleName());
+                        }
+                    }
                 }
             }
         }
     }
+
 
     private boolean isValidCommandMethod(Method method) {
         return method.getParameterCount() == 1 && method.getParameterTypes()[0] == MessageContext.class;

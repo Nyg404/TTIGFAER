@@ -35,7 +35,6 @@ public class MessageContext {
         this.messageId = message.getMessageId();
         this.replyToMessageId = message.getReplyToMessage() != null ? message.getReplyToMessage().getMessageId() : null;
         this.hasReplies = message.getReplyToMessage() != null;
-        log.info("hasReplies: {}, replyToMessageId: {}", hasReplies, replyToMessageId); // Добавь этот лог
         this.messageArgs = parseArgs(messageText);
     }
 
