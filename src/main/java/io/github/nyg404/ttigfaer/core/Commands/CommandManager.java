@@ -47,12 +47,16 @@ public class CommandManager {
                     switch (type) {
                         case REGISTER_COMMAND -> {
                             String[] cmds = annotation.commands();
-                            if(cmds.length == 0){
-                                log.error("Для REGISTER_COMMAND не было указанно команд в методе: {}", method.getName(), handler.getClass().getSimpleName());
+                            if (cmds.length == 0) {
+                                log.error("Для REGISTER_COMMAND не было указано команд в методе: {}", method.getName(), handler.getClass().getSimpleName());
                             } else {
-                                commands.put(k, executor);
+                                for (String cmd : cmds) {
+                                    commands.put(cmd, executor);
+                                    log.info("Зарегистрирована команда: /{} из метода {} в классе {}", cmd, method.getName(), handler.getClass().getSimpleName());
+                                }
                             }
                         }
+
                         case RESPOND_TO_BOT_MESSAGE -> {
                             botMessageResponders.put(k, executor);
                             log.info("Зарегистрирован ответ на сообщение бота: {} из класса {}", method.getName(), handler.getClass().getSimpleName());
