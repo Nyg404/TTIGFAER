@@ -1,6 +1,6 @@
 package io.github.nyg404.ttigfaer.core;
 
-import io.github.nyg404.ttigfaer.core.Configuration.BotSettings;
+import io.github.nyg404.ttigfaer.core.config.BotSettings;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Bean;

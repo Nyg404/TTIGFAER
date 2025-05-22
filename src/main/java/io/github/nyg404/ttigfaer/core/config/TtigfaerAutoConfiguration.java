@@ -1,7 +1,8 @@
-package io.github.nyg404.ttigfaer.core.Configuration;
+package io.github.nyg404.ttigfaer.core.config;
 
 import io.github.nyg404.ttigfaer.api.Interface.CommandHandler;
 import io.github.nyg404.ttigfaer.core.Commands.CommandManager;
+import io.github.nyg404.ttigfaer.core.Properties.AsyncProperties;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -17,7 +18,7 @@ import java.util.concurrent.Executor;
 
 @Configuration
 @EnableAsync
-@EnableConfigurationProperties({BotSettings.class})
+@EnableConfigurationProperties({BotSettings.class, AsyncProperties.class})
 @ComponentScan(basePackages = "io.github.nyg404.ttigfaer")
 @Import(AsyncSettings.class)
 public class TtigfaerAutoConfiguration {

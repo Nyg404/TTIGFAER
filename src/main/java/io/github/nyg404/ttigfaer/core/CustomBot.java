@@ -2,7 +2,7 @@ package io.github.nyg404.ttigfaer.core;
 
 import io.github.nyg404.ttigfaer.api.Message.MessageContext;
 import io.github.nyg404.ttigfaer.core.Commands.CommandManager;
-import io.github.nyg404.ttigfaer.core.Configuration.BotSettings;
+import io.github.nyg404.ttigfaer.core.config.BotSettings;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.telegram.telegrambots.longpolling.util.LongPollingSingleThreadUpdateConsumer;

@@ -1,0 +1,28 @@
+package io.github.nyg404.ttigfaer.core.config;
+
+import io.github.nyg404.ttigfaer.core.Properties.AsyncProperties;
+import lombok.RequiredArgsConstructor;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Conditional;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
+
+@RequiredArgsConstructor
+@Configuration
+public class AsyncSettings {
+    private final AsyncProperties asyncProperties;
+
+    @Bean(name = "asyncExecutor")
+    @ConditionalOnMissingBean(name = "asyncExecutor")
+    public ThreadPoolTaskExecutor taskExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(asyncProperties.getCorePoolSize());
+        executor.setMaxPoolSize(asyncProperties.getMaxPoolSize());
+        executor.setQueueCapacity(asyncProperties.getQueueCapacity());
+        executor.setThreadNamePrefix(asyncProperties.getThreadNamePrefix());
+        executor.initialize();
+        return executor;
+    }
+
+}
