@@ -1,84 +1,72 @@
 package io.github.nyg404.ttigfaer.core.Manager;
 
-import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.Map;
-import java.util.Queue;
 import java.util.concurrent.*;
 
+
+
 public class RateLimitManager {
+    private final int limit;
+    private final int windowSeconds;
+    private final Map<Long, Deque<Long>> userCallTimestamps = new ConcurrentHashMap<>();
+    private final Map<Long, BlockingQueue<Runnable>> taskQueues = new ConcurrentHashMap<>();
+    private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+    private final Executor asyncExecutor;
 
-    private final int maxCalls;
-    private final long intervalMillis;
-
-    // Для каждого чата очередь вызовов
-    private final Map<Long, Queue<Runnable>> queues = new ConcurrentHashMap<>();
-    // Для каждого чата — время вызовов в пределах интервала (FIFO)
-    private final Map<Long, Deque<Long>> callTimestamps = new ConcurrentHashMap<>();
-
-    private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
-
-    public RateLimitManager(int maxCalls, long intervalMillis) {
-        this.maxCalls = maxCalls;
-        this.intervalMillis = intervalMillis;
-        scheduler.scheduleAtFixedRate(this::processQueues, 0, 100, TimeUnit.MILLISECONDS);
+    public RateLimitManager(int limit, int windowSeconds, Executor asyncExecutor) {
+        this.limit = limit;
+        this.windowSeconds = windowSeconds;
+        this.asyncExecutor = asyncExecutor;
     }
 
-    // Метод добавляет вызов либо сразу запускает, либо ставит в очередь
     public void submit(long chatId, Runnable task) {
-        queues.putIfAbsent(chatId, new ConcurrentLinkedQueue<>());
-        callTimestamps.putIfAbsent(chatId, new ArrayDeque<>());
+        taskQueues.computeIfAbsent(chatId, k -> new LinkedBlockingQueue<>());
+        BlockingQueue<Runnable> queue = taskQueues.get(chatId);
 
-        synchronized (getLock(chatId)) {
-            if (canExecute(chatId)) {
-                recordCall(chatId);
-                task.run();
-            } else {
-                queues.get(chatId).offer(task);
-            }
+        synchronized (queue) {
+            queue.offer(task);
+            processQueue(chatId, queue);
         }
     }
 
-    // Проверяем, можно ли сейчас вызвать обработчик для чата
-    private boolean canExecute(long chatId) {
-        Deque<Long> timestamps = callTimestamps.get(chatId);
+    private void processQueue(long chatId, BlockingQueue<Runnable> queue) {
+        Deque<Long> calls = userCallTimestamps.computeIfAbsent(chatId, k -> new ConcurrentLinkedDeque<>());
         long now = System.currentTimeMillis();
+        long cutoff = now - windowSeconds * 1000L;
 
-        // Удаляем устаревшие таймстампы
-        while (!timestamps.isEmpty() && now - timestamps.peekFirst() > intervalMillis) {
-            timestamps.pollFirst();
-        }
-        return timestamps.size() < maxCalls;
-    }
+        synchronized (calls) {
+            while (!calls.isEmpty() && calls.peekFirst() < cutoff) {
+                calls.pollFirst();
+            }
 
-    private void recordCall(long chatId) {
-        Deque<Long> timestamps = callTimestamps.get(chatId);
-        timestamps.addLast(System.currentTimeMillis());
-    }
+            if (calls.size() >= limit) {
+                long oldestCallTimestamp = calls.peekFirst();
+                long waitTimeMillis = (oldestCallTimestamp + windowSeconds * 1000L) - now;
+                if (waitTimeMillis < 0) waitTimeMillis = 0;
 
-    // Периодически пытаемся выполнить задачи из очереди
-    private void processQueues() {
-        for (Long chatId : queues.keySet()) {
-            synchronized (getLock(chatId)) {
-                Queue<Runnable> queue = queues.get(chatId);
-                if (queue == null) continue;
-
-                while (!queue.isEmpty() && canExecute(chatId)) {
-                    Runnable task = queue.poll();
-                    if (task != null) {
-                        recordCall(chatId);
-                        task.run();
+                scheduler.schedule(() -> {
+                    synchronized (queue) {
+                        processQueue(chatId, queue);
                     }
-                }
+                }, waitTimeMillis, TimeUnit.MILLISECONDS);
+                return;
+            }
+
+
+            Runnable nextTask = queue.poll();
+            if (nextTask != null) {
+                calls.addLast(now);
+
+                asyncExecutor.execute(nextTask);
+
+
+                scheduler.schedule(() -> {
+                    synchronized (queue) {
+                        processQueue(chatId, queue);
+                    }
+                }, 100, TimeUnit.MILLISECONDS);
             }
         }
-    }
-
-    // Для синхронизации по chatId
-    private final Map<Long, Object> locks = new ConcurrentHashMap<>();
-    private Object getLock(Long chatId) {
-        locks.putIfAbsent(chatId, new Object());
-        return locks.get(chatId);
     }
 }
-

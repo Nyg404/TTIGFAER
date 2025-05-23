@@ -2,6 +2,7 @@ package io.github.nyg404.ttigfaer.core.Manager;
 
 import io.github.nyg404.ttigfaer.api.Annotations.Handler;
 import io.github.nyg404.ttigfaer.api.Annotations.TAsync;
+import io.github.nyg404.ttigfaer.api.Annotations.TimeBot;
 import io.github.nyg404.ttigfaer.api.Interface.CommandHandler;
 import io.github.nyg404.ttigfaer.api.Message.MessageContext;
 import io.github.nyg404.ttigfaer.core.Enum.HandlerType;
@@ -22,7 +23,7 @@ import java.util.concurrent.Executor;
 public class CommandManager {
     private final Map<HandlerType, Map<String, CommandExecutor>> handlersByType = new HashMap<>();
     private final List<CommandHandler> handlers;
-    private final Executor asyncExecutor; // Пул потоков для асинхронных вызовов
+    private final Executor asyncExecutor;
 
     public CommandManager(List<CommandHandler> handlers, @Qualifier("asyncExecutor") Executor asyncExecutor) {
         this.handlers = handlers;
@@ -33,19 +34,29 @@ public class CommandManager {
     public void init() {
         log.info("Начало регистрации обработчиков для {} бинов", handlers.size());
         for (CommandHandler handler : handlers) {
-            Class<?> targetClass = AopUtils.getTargetClass(handler); // Используем AopUtils для обхода прокси
+            Class<?> targetClass = AopUtils.getTargetClass(handler);
             log.info("Сканирование класса: {}", targetClass.getSimpleName());
             for (Method method : targetClass.getDeclaredMethods()) {
                 if (method.isAnnotationPresent(Handler.class)) {
                     Handler annotation = method.getAnnotation(Handler.class);
                     HandlerType type = annotation.value();
-                    boolean isAsync = method.isAnnotationPresent(TAsync.class); // Проверяем наличие @TAsync
-                    int limit = annotation.limit();
-                    int limitWindows = annotation.limitWindows();
-                    log.info("Обнаружен метод с @Handler: {} (тип: {}, асинхронный: {})", method.getName(), type, isAsync);
+                    boolean isAsync = method.isAnnotationPresent(TAsync.class);
 
+                    // Проверяем наличие аннотации TimeBot
+                    int limit = 0;
+                    int limitWindows = 0;
+                    int delay = 0;
+                    if (method.isAnnotationPresent(TimeBot.class)) {
+                        TimeBot timeBot = method.getAnnotation(TimeBot.class);
+                        limit = timeBot.limit();
+                        limitWindows = timeBot.limitWindows();
+                        delay = timeBot.delay();
+                    }
 
-                    CommandExecutor executor = new CommandExecutor(handler, method, isAsync, asyncExecutor, limit, limitWindows);
+                    log.info("Обнаружен метод с @Handler: {} (тип: {}, асинхронный: {}, limit: {}, limitWindows: {}, delay: {})",
+                            method.getName(), type, isAsync, limit, limitWindows, delay);
+
+                    CommandExecutor executor = new CommandExecutor(handler, method, isAsync, asyncExecutor, limit, limitWindows, delay);
                     handlersByType.computeIfAbsent(type, k -> new HashMap<>());
 
                     if (type == HandlerType.REGISTER_COMMAND) {
@@ -69,10 +80,7 @@ public class CommandManager {
         log.info("Завершена регистрация обработчиков. Зарегистрировано типов: {}", handlersByType.keySet());
     }
 
-
-
     public void dispatch(MessageContext ctx) {
-        // Убрали @Async, так как асинхронность теперь управляется через @TAsync
         if (ctx.getMessage().getReplyToMessage() != null
                 && ctx.getMessage().getReplyToMessage().getFrom() != null
                 && ctx.getMessage().getReplyToMessage().getFrom().getIsBot()) {
@@ -124,40 +132,41 @@ public class CommandManager {
         private final int limit;
         private final int limitWindows;
         private final RateLimitManager rateLimitManager;
+        private final int delay;
 
-        // Внутри CommandExecutor:
-        public CommandExecutor(Object bean, Method method, boolean isAsync, Executor asyncExecutor, int limit, int limitWindows) {
+        public CommandExecutor(Object bean, Method method, boolean isAsync, Executor asyncExecutor,
+                               int limit, int limitWindows, int delay) {
             this.bean = bean;
             this.method = method;
             this.isAsync = isAsync;
             this.asyncExecutor = asyncExecutor;
             this.limit = limit;
             this.limitWindows = limitWindows;
-            this.rateLimitManager = new RateLimitManager(limit, limitWindows);
+            this.delay = delay;
+            this.rateLimitManager = new RateLimitManager(limit, limitWindows, asyncExecutor);
         }
-
 
         public void invoke(MessageContext ctx) {
             Runnable task = () -> {
                 try {
+                    if (delay > 0) {
+                        Thread.sleep(delay * 1000L);
+                    }
                     method.invoke(bean, ctx);
                 } catch (Exception e) {
                     log.error("Ошибка при {}вызове команды: {}", isAsync ? "асинхронном " : "", ctx.getCommand(), e);
                 }
             };
 
-            if (limit > 0) {
-                long chatId = ctx.getChatId(); // Получаем id чата из контекста
-                rateLimitManager.submit(chatId, () -> {
-                    if (isAsync) {
-                        asyncExecutor.execute(task);
-                    } else {
-                        task.run();
-                    }
-                });
-            } else {
-                if (isAsync) {
+            if (isAsync) {
+                if (limit > 0) {
+                    rateLimitManager.submit(ctx.getChatId(), () -> asyncExecutor.execute(task));
+                } else {
                     asyncExecutor.execute(task);
+                }
+            } else {
+                if (limit > 0) {
+                    rateLimitManager.submit(ctx.getChatId(), task);
                 } else {
                     task.run();
                 }

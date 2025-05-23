@@ -57,10 +57,4 @@ public @interface Handler {
      */
     String[] commands() default {};
 
-    /**
-     * Ставить лимит на отправку сообщений.
-     */
-    int limit() default 0;
-
-    int limitWindows() default 1;
 }
