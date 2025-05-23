@@ -36,7 +36,10 @@ jobs:
             </servers>
           </settings>' > ${{ github.workspace }}/.m2/settings.xml
 
+      - name: Debug settings.xml
+        run: cat ${{ github.workspace }}/.m2/settings.xml
+
       - name: Build and deploy
-        run: mvn clean deploy
+        run: mvn clean deploy -X
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
