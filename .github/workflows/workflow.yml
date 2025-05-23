@@ -42,4 +42,4 @@ jobs:
       - name: Build and deploy
         run: mvn clean deploy -X
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.TOKEN }}
