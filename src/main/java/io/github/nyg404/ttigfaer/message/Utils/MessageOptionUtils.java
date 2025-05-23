@@ -1,8 +1,13 @@
 package io.github.nyg404.ttigfaer.message.Utils;
 
+import io.github.nyg404.ttigfaer.message.MessageService;
 import io.github.nyg404.ttigfaer.message.Options.*;
 import org.telegram.telegrambots.meta.api.methods.send.*;
+import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageMedia;
+import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText;
 import org.telegram.telegrambots.meta.api.objects.InputFile;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
+import org.telegram.telegrambots.meta.generics.TelegramClient;
 
 public class MessageOptionUtils {
 
@@ -149,5 +154,26 @@ public class MessageOptionUtils {
         if (options.getCaptionEntities() != null && !options.getCaptionEntities().isEmpty()) {
             builder.captionEntities(options.getCaptionEntities());
         }
+    }
+    public static void applyEditTextOptions(EditMessageText.EditMessageTextBuilder<EditMessageText, ?> builder, EditTextOptions options) {
+        if (options == null) return;
+        builder
+                .parseMode(options.getParseMode())
+                .disableWebPagePreview(options.getDisableWebPagePreview())
+                .replyMarkup((InlineKeyboardMarkup) options.getReplyMarkup())
+                .entities(options.getEntities())
+                .linkPreviewOptions(options.getLinkPreviewOptions())
+                .businessConnectionId(options.getBusinessConnectionId());
+    }
+
+    public static void applyEditMediaOptions(EditMessageMedia.EditMessageMediaBuilder<EditMessageMedia, ?> builder, EditMediaOptions options){
+        if (options == null) return;
+        builder
+                .replyMarkup((InlineKeyboardMarkup) options.getReplyMarkup())
+                .businessConnectionId(options.getBusinessConnectionId());
+    }
+
+    private void teest(){
+
     }
 }

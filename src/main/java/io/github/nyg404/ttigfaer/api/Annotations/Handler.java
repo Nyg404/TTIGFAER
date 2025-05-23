@@ -56,4 +56,11 @@ public @interface Handler {
      * Массив команд, которые обрабатываются методом (актуально для REGISTER_COMMAND).
      */
     String[] commands() default {};
+
+    /**
+     * Ставить лимит на отправку сообщений.
+     */
+    int limit() default 0;
+
+    int limitWindows() default 1;
 }

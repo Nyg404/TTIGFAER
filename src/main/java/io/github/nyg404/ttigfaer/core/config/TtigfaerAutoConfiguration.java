@@ -1,7 +1,7 @@
 package io.github.nyg404.ttigfaer.core.config;
 
 import io.github.nyg404.ttigfaer.api.Interface.CommandHandler;
-import io.github.nyg404.ttigfaer.core.Commands.CommandManager;
+import io.github.nyg404.ttigfaer.core.Manager.CommandManager;
 import io.github.nyg404.ttigfaer.core.Properties.AsyncProperties;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
