@@ -8,6 +8,9 @@ on:
 jobs:
   build-deploy:
     runs-on: ubuntu-latest
+    permissions:
+      packages: write
+      contents: read
 
     steps:
       - uses: actions/checkout@v3
@@ -20,7 +23,20 @@ jobs:
           server-id: github
           settings-path: ${{ github.workspace }}
 
+      - name: Create Maven settings
+        run: |
+          mkdir -p ${{ github.workspace }}/.m2
+          echo '<settings>
+            <servers>
+              <server>
+                <id>github</id>
+                <username>${{ github.actor }}</username>
+                <password>${{ secrets.GITHUB_TOKEN }}</password>
+              </server>
+            </servers>
+          </settings>' > ${{ github.workspace }}/.m2/settings.xml
+
       - name: Build and deploy
         run: mvn clean deploy
         env:
-          GITHUB_TOKEN: ${{ secrets.TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
