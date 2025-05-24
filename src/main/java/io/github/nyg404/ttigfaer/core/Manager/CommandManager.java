@@ -81,26 +81,32 @@ public class CommandManager {
                             log.error("Для REGISTER_COMMAND не указано команд в методе: {}", method.getName());
                         } else {
                             for (String cmd : cmds) {
+                                if (handlersByType.get(type).containsKey(cmd)) {
+                                    log.warn("Дублированная команда: /{} из метода {} в классе {}. Перезаписываем обработчик.",
+                                            cmd, method.getName(), targetClass.getSimpleName());
+                                }
                                 handlersByType.get(type).put(cmd, executor);
-                                log.info("Зарегистрирована команда: /{} из метода {} в классе {}", cmd, method.getName(), targetClass.getSimpleName());
+                                log.info("Зарегистрирована команда: /{} из метода {} в классе {}",
+                                        cmd, method.getName(), targetClass.getSimpleName());
                             }
                         }
-                    } else if (type == HandlerType.ON_CALLBACK_QUERY) {
-                        String callback = annotation.callBack();
-                        if (callback.isEmpty()) {
-                            log.error("Для ON_CALLBACK_QUERY не указано callback в методе: {}", method.getName());
-                        } else {
-                            handlersByType.get(type).put(callback, executor);
-                            log.info("Зарегистрирован callback: {} из метода {} в классе {}", callback, method.getName(), targetClass.getSimpleName());
+                    }
+                    else if (type == HandlerType.ON_CALLBACK_QUERY) {
+                                String callback = annotation.callBack();
+                                if (callback.isEmpty()) {
+                                    log.error("Для ON_CALLBACK_QUERY не указано callback в методе: {}", method.getName());
+                                } else {
+                                    handlersByType.get(type).put(callback, executor);
+                                    log.info("Зарегистрирован callback: {} из метода {} в классе {}", callback, method.getName(), targetClass.getSimpleName());
+                                }
+                            } else {
+                                String key = targetClass.getName() + "#" + method.getName();
+                                handlersByType.get(type).put(key, executor);
+                                log.info("Зарегистрирован обработчик {} из класса {}", method.getName(), targetClass.getSimpleName());
+                            }
                         }
-                    } else {
-                        String key = targetClass.getName() + "#" + method.getName();
-                        handlersByType.get(type).put(key, executor);
-                        log.info("Зарегистрирован обработчик {} из класса {}", method.getName(), targetClass.getSimpleName());
                     }
                 }
-            }
-        }
         log.info("Завершена регистрация обработчиков. Зарегистрировано типов: {}", handlersByType.keySet());
     }
 
