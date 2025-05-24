@@ -5,7 +5,7 @@ import io.github.nyg404.ttigfaer.api.Annotations.TAsync;
 import io.github.nyg404.ttigfaer.api.Annotations.TimeBot;
 import io.github.nyg404.ttigfaer.api.Interface.CommandHandler;
 import io.github.nyg404.ttigfaer.api.Message.MessageContext;
-import io.github.nyg404.ttigfaer.core.Commands.CommandExecutor; // Импорт CommandExecutor
+import io.github.nyg404.ttigfaer.core.Commands.CommandExecutor;
 import io.github.nyg404.ttigfaer.core.Enum.HandlerType;
 import jakarta.annotation.PostConstruct;
 import lombok.Getter;
@@ -20,19 +20,34 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Executor;
 
+/**
+ * Менеджер команд — отвечает за регистрацию и вызов обработчиков команд и callback.
+ * Позволяет регистрировать методы с аннотацией @Handler и вызывать их по типам событий.
+ */
 @Component
 @Slf4j
 public class CommandManager {
+    /** Карта обработчиков по типу и ключу команды */
     @Getter
     private final Map<HandlerType, Map<String, CommandExecutor>> handlersByType = new HashMap<>();
     private final List<CommandHandler> handlers;
     private final Executor asyncExecutor;
 
+    /**
+     * Конструктор CommandManager.
+     *
+     * @param handlers список всех зарегистрированных обработчиков команд
+     * @param asyncExecutor исполнитель для асинхронных задач
+     */
     public CommandManager(List<CommandHandler> handlers, @Qualifier("asyncExecutor") Executor asyncExecutor) {
         this.handlers = handlers;
         this.asyncExecutor = asyncExecutor;
     }
 
+    /**
+     * Инициализация менеджера команд — сканирование методов обработчиков и их регистрация.
+     * Вызывается автоматически после создания бина Spring.
+     */
     @PostConstruct
     public void init() {
         log.info("Начало регистрации обработчиков для {} бинов", handlers.size());
@@ -89,6 +104,11 @@ public class CommandManager {
         log.info("Завершена регистрация обработчиков. Зарегистрировано типов: {}", handlersByType.keySet());
     }
 
+    /**
+     * Обработка входящего контекста сообщения и вызов соответствующих обработчиков.
+     *
+     * @param ctx контекст сообщения
+     */
     public void dispatch(MessageContext ctx) {
         if (ctx.getMessage() != null && ctx.getMessage().getReplyToMessage() != null
                 && ctx.getMessage().getReplyToMessage().getFrom() != null
@@ -129,6 +149,12 @@ public class CommandManager {
         }
     }
 
+    /**
+     * Вызов всех обработчиков определённого типа с переданным контекстом.
+     *
+     * @param type тип обработчиков
+     * @param ctx контекст сообщения
+     */
     private void invokeHandlers(HandlerType type, MessageContext ctx) {
         Map<String, CommandExecutor> map = handlersByType.get(type);
         if (map == null) return;
@@ -140,5 +166,4 @@ public class CommandManager {
             }
         }
     }
-
 }

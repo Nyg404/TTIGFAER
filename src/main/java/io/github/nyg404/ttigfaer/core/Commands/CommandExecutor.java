@@ -4,9 +4,14 @@ import io.github.nyg404.ttigfaer.api.Message.MessageContext;
 import io.github.nyg404.ttigfaer.core.Manager.RateLimitManager;
 import lombok.extern.slf4j.Slf4j;
 
-
 import java.lang.reflect.Method;
 import java.util.concurrent.Executor;
+
+/**
+ * Класс, отвечающий за выполнение команд.
+ * Позволяет вызывать методы обработчиков команд синхронно или асинхронно,
+ * с поддержкой ограничения частоты вызовов (rate limiting) и задержек.
+ */
 @Slf4j
 public class CommandExecutor {
     private final Object bean;
@@ -18,6 +23,17 @@ public class CommandExecutor {
     private final RateLimitManager rateLimitManager;
     private final int delay;
 
+    /**
+     * Конструктор CommandExecutor.
+     *
+     * @param bean объект, у которого вызывается метод
+     * @param method метод обработчика команды
+     * @param isAsync флаг асинхронного выполнения
+     * @param asyncExecutor исполнитель для асинхронных задач
+     * @param limit лимит вызовов команды
+     * @param limitWindows временное окно для лимита (в миллисекундах)
+     * @param delay задержка перед выполнением команды (в секундах)
+     */
     public CommandExecutor(Object bean, Method method, boolean isAsync, Executor asyncExecutor,
                            int limit, int limitWindows, int delay) {
         this.bean = bean;
@@ -30,6 +46,11 @@ public class CommandExecutor {
         this.rateLimitManager = new RateLimitManager(limit, limitWindows, asyncExecutor);
     }
 
+    /**
+     * Выполнить команду с заданным контекстом.
+     *
+     * @param ctx контекст сообщения и команды
+     */
     public void invoke(MessageContext ctx) {
         Runnable task = () -> {
             try {
