@@ -64,13 +64,14 @@ public interface MessageServicIn {
 //    void sendLocation(long chatId, double latitude, double longitude);
 
 //    void sendStiker(MessageContext ctx, InputFile file);
-    void sendStiker(long chatID, InputFile file);
+    void sendSticker(long chatId, InputFile file);
+    void sendSticker(long chatId, InputFile file, StickerOptions options);
 
     void editText(long ChatId, int messageId, String text);
     void editText(long ChatId, int messageId, String text, EditTextOptions options);
 
-    void editMedia(long ChatId, int messageID, InputMedia file);
-    void editMedia(long ChatId, int messageID, InputMedia file, EditMediaOptions options);
+    void editMedia(long ChatId, int messageId, InputMedia file);
+    void editMedia(long ChatId, int messageId, InputMedia file, EditMediaOptions options);
 
 
 

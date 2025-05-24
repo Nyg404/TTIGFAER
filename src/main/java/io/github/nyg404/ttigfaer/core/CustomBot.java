@@ -9,7 +9,13 @@ import org.telegram.telegrambots.longpolling.util.LongPollingSingleThreadUpdateC
 import org.telegram.telegrambots.meta.api.objects.Update;
 
 /**
- * Главный класс регеструриющий бота.
+ * Абстрактный базовый класс для кастомного Telegram бота.
+ * Реализует интерфейс {@link LongPollingSingleThreadUpdateConsumer} для обработки обновлений.
+ *
+ * <p>Отвечает за получение обновлений из Telegram и их передачу в {@link CommandManager}
+ * через контекст {@link MessageContext}.</p>
+ *
+ * <p>Все исключения при обработке логируются.</p>
  */
 @Slf4j
 @RequiredArgsConstructor
@@ -18,13 +24,17 @@ public abstract class CustomBot implements LongPollingSingleThreadUpdateConsumer
     private final BotSettings botSettings;
     private final CommandManager commandManager;
 
-
+    /**
+     * Метод для обработки каждого обновления из Telegram.
+     * Создаёт {@link MessageContext} и передаёт его в {@link CommandManager}.
+     *
+     * @param update обновление из Telegram
+     */
     @Override
     public void consume(Update update) {
         try {
             MessageContext ctx = new MessageContext(update, botSettings.getPrefix());
             commandManager.dispatch(ctx);
-
         } catch (Exception e) {
             log.error("Ошибка при обработке обновления", e);
         }

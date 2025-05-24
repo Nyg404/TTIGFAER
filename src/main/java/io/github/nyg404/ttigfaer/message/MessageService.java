@@ -17,7 +17,15 @@ import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.meta.generics.TelegramClient;
 
 /**
- * Сервис для отправки сообщений и мультимедиа в Telegram.
+ * Сервис для отправки и редактирования сообщений, а также мультимедийного контента
+ * в Telegram через Telegram Bot API.
+ *
+ * <p>Поддерживает отправку текстовых сообщений, аудио, фото, видео, документов,
+ * голосовых сообщений, стикеров и анимаций. Также реализует методы пересылки сообщений
+ * и редактирования уже отправленных сообщений (текста и медиа).</p>
+ *
+ * <p>Использует {@link TelegramClient} для выполнения запросов к Telegram API и
+ * обрабатывает возможные исключения {@link TelegramApiException} с логированием ошибок.</p>
  */
 @Slf4j
 @RequiredArgsConstructor
@@ -34,15 +42,24 @@ public class MessageService implements MessageServicIn {
 //    public void sendMessage(MessageContext context, String text, MessageOptions options) {
 //        sendMessage(context.getChatId(), text, options);
 //    }
-
+    /**
+     * Отправляет текстовое сообщение в указанный чат.
+     * @param chatId ID чата
+     * @param text текст сообщения
+     */
     @Override
     public void sendMessage(long chatId, String text) {
         sendMessage(chatId, text, null);
     }
 
+    /**
+     * Отправляет текстовое сообщение в указанный чат с дополнительными опциями.
+     * @param chatId ID чата
+     * @param text текст сообщения
+     * @param options дополнительные опции для сообщения
+     */
     @Override
     @SuppressWarnings("all")
-
     public void sendMessage(long chatId, String text, MessageOptions options) {
         SendMessage.SendMessageBuilder builder = SendMessage.builder()
                 .chatId(String.valueOf(chatId))
@@ -58,6 +75,11 @@ public class MessageService implements MessageServicIn {
         }
     }
 
+    /**
+     * Отправляет ответное сообщение (reply) в чат из контекста.
+     * @param context контекст сообщения
+     * @param text текст ответа
+     */
     @Override
     public void sendReplayMessage(MessageContext context, String text) {
         sendMessage(context.getChatId(), text, MessageOptions.builder()
@@ -65,6 +87,13 @@ public class MessageService implements MessageServicIn {
                 .build());
     }
 
+    /**
+     * Пересылает сообщение в другой чат.
+     * @param context контекст исходного сообщения
+     * @param targetChatId ID целевого чата
+     * @param message сообщение для пересылки
+     * @return пересланное сообщение или null в случае ошибки
+     */
     @Override
     public Message sendForwardMessage(MessageContext context, long targetChatId, Message message) {
         ForwardMessage forwardMessage = ForwardMessage.builder()
@@ -91,11 +120,22 @@ public class MessageService implements MessageServicIn {
 //        sendAudio(ctx.getChatId(), file, options);
 //    }
 
+    /**
+     * Отправляет аудиофайл в указанный чат.
+     * @param chatId ID чата
+     * @param file аудиофайл
+     */
     @Override
     public void sendAudio(long chatId, InputFile file) {
         sendAudio(chatId, file, null);
     }
 
+    /**
+     * Отправляет аудиофайл в указанный чат с опциями.
+     * @param chatId ID чата
+     * @param file аудиофайл
+     * @param options дополнительные опции для аудио
+     */
     @Override
     @SuppressWarnings("all")
     public void sendAudio(long chatId, InputFile file, AudioOptions options) {
@@ -122,11 +162,22 @@ public class MessageService implements MessageServicIn {
 //        sendPhoto(ctx.getChatId(), file, options);
 //    }
 
+    /**
+     * Отправляет фотографию в указанный чат.
+     * @param chatId ID чата
+     * @param file файл фотографии
+     */
     @Override
     public void sendPhoto(long chatId, InputFile file) {
         sendPhoto(chatId, file, null);
     }
 
+    /**
+     * Отправляет фотографию в указанный чат с опциями.
+     * @param chatId ID чата
+     * @param file файл фотографии
+     * @param options дополнительные опции для фотографии
+     */
     @Override
     @SuppressWarnings("all")
     public void sendPhoto(long chatId, InputFile file, PhotoOptions options) {
@@ -153,12 +204,22 @@ public class MessageService implements MessageServicIn {
 //        sendAnimation(ctx.getChatId(), file, options);
 //    }
 
+    /**
+     * Отправляет анимацию в указанный чат.
+     * @param chatId ID чата
+     * @param file файл анимации
+     */
     @Override
     public void sendAnimation(long chatId, InputFile file) {
         sendAnimation(chatId, file, null);
     }
 
-
+    /**
+     * Отправляет анимацию в указанный чат с опциями.
+     * @param chatId ID чата
+     * @param file файл анимации
+     * @param options дополнительные опции для анимации
+     */
     @Override
     @SuppressWarnings("all")
     public void sendAnimation(long chatId, InputFile file, AnimationOptions options) {
@@ -185,11 +246,22 @@ public class MessageService implements MessageServicIn {
 //        sendVideo(ctx.getChatId(), file, options);
 //    }
 
+    /**
+     * Отправляет видео в указанный чат.
+     * @param chatId ID чата
+     * @param file видеофайл
+     */
     @Override
     public void sendVideo(long chatId, InputFile file) {
         sendVideo(chatId, file, null);
     }
 
+    /**
+     * Отправляет видео в указанный чат с опциями.
+     * @param chatId ID чата
+     * @param file видеофайл
+     * @param options дополнительные опции для видео
+     */
     @Override
     @SuppressWarnings("all")
     public void sendVideo(long chatId, InputFile file, VideoOptions options) {
@@ -216,11 +288,22 @@ public class MessageService implements MessageServicIn {
 //        sendDocument(ctx.getChatId(), file, options);
 //    }
 
+    /**
+     * Отправляет документ в указанный чат.
+     * @param chatId ID чата
+     * @param file файл документа
+     */
     @Override
     public void sendDocument(long chatId, InputFile file) {
         sendDocument(chatId, file, null);
     }
 
+    /**
+     * Отправляет документ в указанный чат с опциями.
+     * @param chatId ID чата
+     * @param file файл документа
+     * @param options дополнительные опции для документа
+     */
     @Override
     @SuppressWarnings("all")
     public void sendDocument(long chatId, InputFile file, DocumentOptions options) {
@@ -246,12 +329,22 @@ public class MessageService implements MessageServicIn {
 //    public void sendVoice(MessageContext ctx, InputFile file, VoiceOptions options) {
 //        sendVoice(ctx.getChatId(), file, options);
 //    }
-
+    /**
+     * Отправляет голосовое сообщение в указанный чат.
+     * @param chatId ID чата
+     * @param file аудиофайл голосового сообщения
+     */
     @Override
     public void sendVoice(long chatId, InputFile file) {
         sendVoice(chatId, file, null);
     }
 
+    /**
+     * Отправляет голосовое сообщение в указанный чат с опциями.
+     * @param chatId ID чата
+     * @param file аудиофайл голосового сообщения
+     * @param options дополнительные опции для голосового сообщения
+     */
     @Override
     @SuppressWarnings("all")
     public void sendVoice(long chatId, InputFile file, VoiceOptions options) {
@@ -295,24 +388,54 @@ public class MessageService implements MessageServicIn {
 //        sendStiker(ctx.getChatId(), file);
 //    }
 
+    /**
+     * Отправляет в чат стикер.
+     * @param chatId Id чата
+     * @param file file
+     */
     @Override
-    public void sendStiker(long chatID, InputFile file) {
-        SendSticker sendSticker = SendSticker.builder()
-                .chatId(chatID)
-                .sticker(file)
-                .build();
+    public void sendSticker(long chatId, InputFile file){
+        sendSticker(chatId, file, null);
+    }
+
+    /**
+     * Отправляет в чат стикер с опциями.
+     * @param chatId Id чата
+     * @param file file
+     * @param options опции
+     */
+    @Override
+    public void sendSticker(long chatId, InputFile file, StickerOptions options) {
+        SendSticker.SendStickerBuilder builder = SendSticker.builder()
+                .chatId(chatId)
+                .sticker(file);
+        MessageOptionUtils.applyStickerOptions(builder, options, file);
+
         try {
-            client.execute(sendSticker);
+            client.execute(builder.build());
         } catch (TelegramApiException e) {
-            log.error("Ошибка при отправке геолокации в чат {}: {}", chatID, e.getMessage(), e);
+            log.error("Ошибка при отправке геолокации в чат {}: {}", chatId, e.getMessage(), e);
         }
     }
 
+    /**
+     * Редактирует текст сообщения.
+     * @param chatId ID чата
+     * @param messageId ID сообщения для редактирования
+     * @param text новый текст сообщения
+     */
     @Override
     public void editText(long chatId, int messageId, String text) {
         editText(chatId, messageId, text, null);
     }
 
+    /**
+     * Редактирует текст сообщения.
+     * @param chatId ID чата
+     * @param messageId ID сообщения для редактирования
+     * @param text новый текст сообщения
+     * @param options опции.
+     */
     @Override
     @SuppressWarnings("all")
     public void editText(long chatId, int messageId, String text, EditTextOptions options) {
@@ -329,12 +452,25 @@ public class MessageService implements MessageServicIn {
         }
     }
 
+    /**
+     * Редактирует медиа сообщения.
+     * @param chatId ID чата
+     * @param messageId ID сообщения для редактирования
+     * @param file новое медиа
+     */
     @Override
     @SuppressWarnings("all")
-    public void editMedia(long chatId, int messageID, InputMedia file) {
-        editMedia(chatId, messageID, file, null);
+    public void editMedia(long chatId, int messageId, InputMedia file) {
+        editMedia(chatId, messageId, file, null);
     }
 
+    /**
+     * Редактирует медиа сообщения.
+     * @param chatId ID чата
+     * @param messageId ID сообщения для редактирования
+     * @param file новое медиа
+     * @param options опции
+     */
     @Override
     @SuppressWarnings("all")
     public void editMedia(long chadId, int messageID, InputMedia file, EditMediaOptions options) {

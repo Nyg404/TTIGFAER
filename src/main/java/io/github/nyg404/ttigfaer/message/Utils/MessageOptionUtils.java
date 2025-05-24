@@ -7,10 +7,19 @@ import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageMe
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText;
 import org.telegram.telegrambots.meta.api.objects.InputFile;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
-import org.telegram.telegrambots.meta.generics.TelegramClient;
 
+/**
+ * Вспомогательные методы для применения опций сообщений Telegram API.
+ * Предназначен для упрощения настройки билдеров сообщений с помощью опциональных параметров.
+ */
 public class MessageOptionUtils {
 
+    /**
+     * Применяет опции к билдеру SendMessage.
+     *
+     * @param builder билдер SendMessage
+     * @param options объект опций сообщения
+     */
     public static void applyMessageOptions(SendMessage.SendMessageBuilder<SendMessage, ?> builder, MessageOptions options) {
         if (options == null) return;
         builder
@@ -29,6 +38,13 @@ public class MessageOptionUtils {
                 .allowPaidBroadcast(options.getAllowPaidBroadcast());
     }
 
+    /**
+     * Применяет опции к аудиосообщению.
+     *
+     * @param builder билдер SendAudio
+     * @param options объект опций аудио
+     * @param audio   файл аудио
+     */
     public static void applyAudioOptions(SendAudio.SendAudioBuilder<SendAudio, ?> builder, AudioOptions options, InputFile audio) {
         if (options == null) return;
         builder
@@ -55,6 +71,13 @@ public class MessageOptionUtils {
         }
     }
 
+    /**
+     * Применяет опции к фото.
+     *
+     * @param builder билдер SendPhoto
+     * @param options объект опций фото
+     * @param photo   файл фото
+     */
     public static void applyPhotoOptions(SendPhoto.SendPhotoBuilder<SendPhoto, ?> builder, PhotoOptions options, InputFile photo) {
         if (options == null) return;
         builder
@@ -73,6 +96,13 @@ public class MessageOptionUtils {
         }
     }
 
+    /**
+     * Применяет опции к анимации (GIF).
+     *
+     * @param builder билдер SendAnimation
+     * @param options объект опций анимации
+     * @param animation файл анимации
+     */
     public static void applyAnimationOptions(SendAnimation.SendAnimationBuilder<SendAnimation, ?> builder, AnimationOptions options, InputFile animation) {
         if (options == null) return;
         builder
@@ -98,6 +128,14 @@ public class MessageOptionUtils {
             builder.captionEntities(options.getCaptionEntities());
         }
     }
+
+    /**
+     * Применяет опции к видео.
+     *
+     * @param builder билдер SendVideo
+     * @param options объект опций видео
+     * @param video   файл видео
+     */
     public static void applyVideoOptions(SendVideo.SendVideoBuilder<SendVideo, ?> builder, VideoOptions options, InputFile video) {
         if (options == null) return;
         builder
@@ -120,6 +158,13 @@ public class MessageOptionUtils {
         }
     }
 
+    /**
+     * Применяет опции к документу.
+     *
+     * @param builder билдер SendDocument
+     * @param options объект опций документа
+     * @param document файл документа
+     */
     public static void applyDocumentOptions(SendDocument.SendDocumentBuilder<SendDocument, ?> builder, DocumentOptions options, InputFile document) {
         if (options == null) return;
         builder
@@ -137,6 +182,14 @@ public class MessageOptionUtils {
             builder.captionEntities(options.getCaptionEntities());
         }
     }
+
+    /**
+     * Применяет опции к голосовому сообщению.
+     *
+     * @param builder билдер SendVoice
+     * @param options объект опций голосового сообщения
+     * @param file файл голосового сообщения
+     */
     public static void applyVoiceOptions(SendVoice.SendVoiceBuilder<SendVoice, ?> builder, VoiceOptions options, InputFile file) {
         if (options == null) return;
 
@@ -155,6 +208,41 @@ public class MessageOptionUtils {
             builder.captionEntities(options.getCaptionEntities());
         }
     }
+
+    /**
+     * Применяет опции к стикеру.
+     *
+     * @param builder билдер SendSticker
+     * @param options объект опций стикера
+     * @param sticker файл стикера
+     */
+    public static void applyStickerOptions(SendSticker.SendStickerBuilder<SendSticker, ?> builder, StickerOptions options, InputFile sticker) {
+        if (options == null) return;
+        builder
+                .sticker(sticker)
+                .disableNotification(options.getDisableNotification())
+                .replyToMessageId(options.getReplyToMessageId())
+                .replyMarkup(options.getReplyMarkup())
+                .allowSendingWithoutReply(options.getAllowSendingWithoutReply())
+                .protectContent(options.getProtectContent())
+                .emoji(options.getEmoji())
+                .businessConnectionId(options.getBusinessConnectionId())
+                .messageEffectId(options.getMessageEffectId())
+                .allowPaidBroadcast(options.getAllowPaidBroadcast());
+
+        // если нужны дополнительные поля, например replyParameters
+        if (options.getReplyParameters() != null) {
+            builder.replyParameters(options.getReplyParameters());
+        }
+    }
+
+
+    /**
+     * Применяет опции к редактируемому текстовому сообщению.
+     *
+     * @param builder билдер EditMessageText
+     * @param options объект опций редактирования текста
+     */
     public static void applyEditTextOptions(EditMessageText.EditMessageTextBuilder<EditMessageText, ?> builder, EditTextOptions options) {
         if (options == null) return;
         builder
@@ -166,14 +254,16 @@ public class MessageOptionUtils {
                 .businessConnectionId(options.getBusinessConnectionId());
     }
 
+    /**
+     * Применяет опции к редактируемому медиа-сообщению.
+     *
+     * @param builder билдер EditMessageMedia
+     * @param options объект опций редактирования медиа
+     */
     public static void applyEditMediaOptions(EditMessageMedia.EditMessageMediaBuilder<EditMessageMedia, ?> builder, EditMediaOptions options){
         if (options == null) return;
         builder
                 .replyMarkup((InlineKeyboardMarkup) options.getReplyMarkup())
                 .businessConnectionId(options.getBusinessConnectionId());
-    }
-
-    private void teest(){
-
     }
 }
