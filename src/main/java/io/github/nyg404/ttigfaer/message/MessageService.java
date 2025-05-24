@@ -16,6 +16,9 @@ import org.telegram.telegrambots.meta.api.objects.message.Message;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.meta.generics.TelegramClient;
 
+import java.util.ArrayList;
+import java.util.Collection;
+
 /**
  * Сервис для отправки и редактирования сообщений, а также мультимедийного контента
  * в Telegram через Telegram Bot API.
@@ -405,6 +408,7 @@ public class MessageService implements MessageServicIn {
      * @param options опции
      */
     @Override
+    @SuppressWarnings("all")
     public void sendSticker(long chatId, InputFile file, StickerOptions options) {
         SendSticker.SendStickerBuilder builder = SendSticker.builder()
                 .chatId(chatId)
@@ -415,6 +419,45 @@ public class MessageService implements MessageServicIn {
             client.execute(builder.build());
         } catch (TelegramApiException e) {
             log.error("Ошибка при отправке геолокации в чат {}: {}", chatId, e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Супер-метод позволяющий отправлять медя в группу. 10 изображений, документов и т.д в одном сообщении
+     * @param chatId Id чата куда
+     * @param groupMedia Группа типа
+     */
+    @Override
+    public void sendMediaGroup(long chatId, Collection<? extends InputMedia> groupMedia){
+        sendMediaGroup(chatId, groupMedia, null);
+    }
+
+    /**
+     * Супер-метод позволяющий отправлять медя в группу. 10 изображений, документов и т.д в одном сообщении
+     * @param chatId Id чата куда
+     * @param groupMedia Группа типа
+     * @param options опции по желанию.
+     */
+    @Override
+    @SuppressWarnings("all")
+    public void sendMediaGroup(long chatId, Collection<? extends InputMedia> groupMedia, MediaOptions options) {
+        if (groupMedia == null || groupMedia.isEmpty()) {
+            log.warn("Попытка отправки пустой медиа-группы в чат {}", chatId);
+            return;
+        }
+
+        SendMediaGroup.SendMediaGroupBuilder builder = SendMediaGroup.builder()
+                .chatId(String.valueOf(chatId))
+                .medias(new ArrayList<>(groupMedia));
+
+        MessageOptionUtils.applyMediaOptions(builder, options);
+
+        try {
+            client.execute(builder.build());
+            log.info("Медиа-группа ({} элементов) отправлена в чат {}", groupMedia.size(), chatId);
+        } catch (TelegramApiException e) {
+            log.error("Ошибка при отправке медиа-группы в чат {}: {}", chatId, e.getMessage(), e);
+            throw new RuntimeException("Не удалось отправить медиа-группу в чат " + chatId, e);
         }
     }
 
@@ -486,6 +529,5 @@ public class MessageService implements MessageServicIn {
             log.error("Ошибка при изменении сообщения {}: {}", chatId, e.getMessage(), e);
         }
     }
-
 
 }

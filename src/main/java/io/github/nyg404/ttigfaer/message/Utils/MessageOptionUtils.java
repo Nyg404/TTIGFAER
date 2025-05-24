@@ -6,6 +6,7 @@ import org.telegram.telegrambots.meta.api.methods.send.*;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageMedia;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText;
 import org.telegram.telegrambots.meta.api.objects.InputFile;
+import org.telegram.telegrambots.meta.api.objects.media.InputMedia;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 
 /**
@@ -236,6 +237,26 @@ public class MessageOptionUtils {
         }
     }
 
+    public static void applyMediaOptions(SendMediaGroup.SendMediaGroupBuilder builder, MediaOptions options) {
+        if (options == null) return;
+
+        builder
+                .disableNotification(options.getDisableNotification())
+                .replyToMessageId(options.getReplyToMessageId())
+                .replyMarkup(options.getReplyMarkup())
+                .businessConnectionId(options.getBusinessConnectionId())
+                .messageEffectId(options.getMessageEffectId())
+                .allowPaidBroadcast(options.getAllowPaidBroadcast())
+                .allowSendingWithoutReply(options.getAllowSendingWithoutReply())
+                .protectContent(options.getProtectContent());
+
+        if (options.getMessageThreadId() != null) {
+            builder.messageThreadId(options.getMessageThreadId());
+        }
+        if (options.getReplyParameters() != null) {
+            builder.replyParameters(options.getReplyParameters());
+        }
+    }
 
     /**
      * Применяет опции к редактируемому текстовому сообщению.

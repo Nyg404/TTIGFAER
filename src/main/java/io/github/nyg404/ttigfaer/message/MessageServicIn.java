@@ -9,6 +9,8 @@ import org.telegram.telegrambots.meta.api.objects.InputFile;
 import org.telegram.telegrambots.meta.api.objects.media.InputMedia;
 import org.telegram.telegrambots.meta.api.objects.message.Message;
 
+import java.util.Collection;
+
 public interface MessageServicIn {
 //    void sendMessage(MessageContext context, String text);
 //    void sendMessage(MessageContext context, String text, MessageOptions options);
@@ -66,6 +68,9 @@ public interface MessageServicIn {
 //    void sendStiker(MessageContext ctx, InputFile file);
     void sendSticker(long chatId, InputFile file);
     void sendSticker(long chatId, InputFile file, StickerOptions options);
+
+    void sendMediaGroup(long chatId, Collection<? extends InputMedia> groupMedia);
+    void sendMediaGroup(long chatId, Collection<? extends InputMedia> groupMedia, MediaOptions options);
 
     void editText(long ChatId, int messageId, String text);
     void editText(long ChatId, int messageId, String text, EditTextOptions options);
