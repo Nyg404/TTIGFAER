@@ -15,39 +15,77 @@
 
     <groupId>io.github.nyg404</groupId>
     <artifactId>ttigfaer</artifactId>
-    <version>1.6.6</version>
+    <version>1.7</version>
     <packaging>jar</packaging>
 
     <name>ttigfaer</name>
     <description>Telegram framework library</description>
+    <url>https://github.com/Nyg404/TTIGFAER</url>
 
     <properties>
         <java.version>21</java.version>
         <spring-boot.version>3.4.5</spring-boot.version>
         <lombok.version>1.18.30</lombok.version>
+
+        <!-- OSSRH URLs -->
+        <ossrh.repository.url>https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/</ossrh.repository.url>
+        <ossrh.snapshot.url>https://s01.oss.sonatype.org/content/repositories/snapshots/</ossrh.snapshot.url>
+
+        <!-- Кодировка -->
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <maven.compiler.source>${java.version}</maven.compiler.source>
+        <maven.compiler.target>${java.version}</maven.compiler.target>
     </properties>
+
+    <scm>
+        <url>https://github.com/Nyg404/TTIGFAER</url>
+        <connection>scm:git:https://github.com/Nyg404/TTIGFAER.git</connection>
+        <developerConnection>scm:git:https://github.com/Nyg404/TTIGFAER.git</developerConnection>
+        <tag>HEAD</tag>
+    </scm>
+
+    <developers>
+        <developer>
+            <id>nyg404</id>
+            <name>Nyg404</name>
+            <email>stasmuznin@gmail.com</email>
+        </developer>
+    </developers>
+
+    <licenses>
+        <license>
+            <name>MIT License</name>
+            <url>https://opensource.org/licenses/MIT</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
 
     <distributionManagement>
         <repository>
-            <id>github</id>
-            <name>GitHub OWNER Apache Maven Packages</name>
-            <url>https://maven.pkg.github.com/Nyg404/TTIGFAER</url>
+            <id>central</id>
+            <name>OSSRasdasdH Release Repository</name>
+            <url>${ossrh.repository.url}</url>
         </repository>
+        <snapshotRepository>
+            <id>central</id>
+            <name>OSSRasdasdH Snapshot Repository</name>
+            <url>${ossrh.snapshot.url}</url>
+        </snapshotRepository>
     </distributionManagement>
 
     <dependencies>
-        <!-- Spring Boot starter как provided, чтобы не тащить при использовании -->
+        <!-- Spring Boot starter как provided, чтобы не включать в итоговый JAR -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter</artifactId>
             <scope>provided</scope>
         </dependency>
 
-        <!-- Lombok для удобства -->
+        <!-- Lombok -->
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
-            <version>1.18.38</version>
+            <version>${lombok.version}</version>
             <optional>true</optional>
         </dependency>
 
@@ -75,12 +113,13 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-configuration-processor</artifactId>
             <version>${spring-boot.version}</version>
+            <optional>true</optional>
         </dependency>
     </dependencies>
 
     <build>
         <plugins>
-            <!-- Компилятор с поддержкой lombok и метаданных -->
+            <!-- Компилятор -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
@@ -102,6 +141,7 @@
                     </annotationProcessorPaths>
                 </configuration>
             </plugin>
+
             <!-- Source JAR -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -130,6 +170,40 @@
                         </goals>
                     </execution>
                 </executions>
+            </plugin>
+
+            <!-- GPG подпись -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-gpg-plugin</artifactId>
+                <version>3.0.1</version>
+                <executions>
+                    <execution>
+                        <id>sign-artifacts</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>sign</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- Maven Deploy Plugin -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-deploy-plugin</artifactId>
+                <version>3.1.0</version>
+            </plugin>
+
+            <plugin>
+                <groupId>org.sonatype.central</groupId>
+                <artifactId>central-publishing-maven-plugin</artifactId>
+                <version>0.7.0</version>
+                <extensions>true</extensions>
+                <configuration>
+                    <publishingServerId>central</publishingServerId> <!-- или central, если в settings.xml такой id -->
+                    <autoPublish>true</autoPublish>
+                </configuration>
             </plugin>
 
         </plugins>
