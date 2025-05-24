@@ -22,6 +22,10 @@ public enum HandlerType {
     /**
      * Обработчик, который реагирует на ответы на сообщения, отправленные ботом.
      */
-    RESPOND_TO_BOT_MESSAGE;
+    RESPOND_TO_BOT_MESSAGE,
+    /**
+     * Обработчик, который реагирует на callBack запросы.
+     */
+    ON_CALLBACK_QUERY;
 
 }
