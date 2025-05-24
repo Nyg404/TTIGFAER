@@ -39,7 +39,7 @@ import java.lang.annotation.Target;
  * @Handler(value = HandlerType.RESPOND_TO_BOT_MESSAGE)
  * public void onReplyToBotMessage(MessageContext ctx) {
  *     ctx.sendMessage(ctx, "Спасибо за ответ на мое сообщение!");
- * }п
+ * }
  * }</pre>
  *
  * @see HandlerType
@@ -49,17 +49,23 @@ import java.lang.annotation.Target;
 public @interface Handler {
     /**
      * Тип обработчика, определяющий способ вызова метода.
+     *
+     * @return тип обработчика {@link HandlerType}
      */
     HandlerType value();
 
     /**
      * Массив команд, которые обрабатываются методом (актуально для REGISTER_COMMAND).
+     *
+     * @return массив строк с командами
      */
     String[] commands() default {};
 
     /**
-     * Обработчик, определяющий callBack запроc
+     * Обработчик, определяющий callBack запрос.
+     *
+     * @return строка с именем callBack
      */
     String callBack() default "";
-
 }
+

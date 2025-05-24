@@ -465,25 +465,27 @@ public class MessageService implements MessageServicIn {
     }
 
     /**
-     * Редактирует медиа сообщения.
-     * @param chatId ID чата
-     * @param messageId ID сообщения для редактирования
-     * @param file новое медиа
-     * @param options опции
+     * Изменяет мультимедийное сообщение в чате по заданному идентификатору сообщения.
+     *
+     * @param chatId  Идентификатор чата, в котором находится сообщение.
+     * @param messageId Идентификатор сообщения, которое нужно изменить.
+     * @param file Новый объект мультимедиа (InputMedia) для замены текущего содержимого.
+     * @param options Дополнительные опции для редактирования сообщения.
      */
     @Override
     @SuppressWarnings("all")
-    public void editMedia(long chadId, int messageID, InputMedia file, EditMediaOptions options) {
+    public void editMedia(long chatId, int messageId, InputMedia file, EditMediaOptions options) {
         EditMessageMedia.EditMessageMediaBuilder builder = EditMessageMedia.builder()
-                .chatId(chadId)
-                .media(file)
-                .messageId(messageID);
+                .chatId(String.valueOf(chatId))
+                .messageId(messageId)
+                .media(file);
         MessageOptionUtils.applyEditMediaOptions(builder, options);
         try {
             client.execute(builder.build());
         } catch (TelegramApiException e) {
-            log.error("Ошибка при изменения сообщения {}: {}", chadId, e.getMessage(), e);
+            log.error("Ошибка при изменении сообщения {}: {}", chatId, e.getMessage(), e);
         }
     }
+
 
 }
