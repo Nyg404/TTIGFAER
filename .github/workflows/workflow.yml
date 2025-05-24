@@ -9,8 +9,12 @@ jobs:
   build-deploy:
     runs-on: ubuntu-latest
     permissions:
-      packages: write
       contents: read
+      packages: write
+
+    env:
+      GITHUB_ACTOR: ${{ github.actor }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     steps:
       - uses: actions/checkout@v3
@@ -23,15 +27,18 @@ jobs:
           server-id: github
           settings-path: ${{ github.workspace }}
 
-      - name: Create Maven settings
+      - name: Create Maven settings.xml
         run: |
           mkdir -p ${{ github.workspace }}/.m2
-          echo '<settings>
+          echo '<settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+                         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                         xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0
+                                             https://maven.apache.org/xsd/settings-1.0.0.xsd">
             <servers>
               <server>
                 <id>github</id>
-                <username>${{ github.actor }}</username>
-                <password>${{ secrets.GITHUB_TOKEN }}</password>
+                <username>${env.GITHUB_ACTOR}</username>
+                <password>${env.GITHUB_TOKEN}</password>
               </server>
             </servers>
           </settings>' > ${{ github.workspace }}/.m2/settings.xml
@@ -39,7 +46,5 @@ jobs:
       - name: Debug settings.xml
         run: cat ${{ github.workspace }}/.m2/settings.xml
 
-      - name: Build and deploy
+      - name: Build and Deploy
         run: mvn clean deploy -X
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
