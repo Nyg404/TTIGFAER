@@ -24,4 +24,6 @@ public class ArgumentRegistry {
     public Object getRaw(Class<?> clazz) {
         return arguments.get(clazz);
     }
+
+
 }

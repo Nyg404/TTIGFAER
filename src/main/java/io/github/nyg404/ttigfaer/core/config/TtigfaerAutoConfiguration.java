@@ -50,4 +50,5 @@ public class TtigfaerAutoConfiguration {
     public CommandManager commandManager(List<CommandHandler> handlers, @Qualifier("asyncExecutor") Executor asyncExecutor, ArgumentRegistry argumentRegistry) {
         return new CommandManager(handlers, asyncExecutor, argumentRegistry);
     }
+
 }
