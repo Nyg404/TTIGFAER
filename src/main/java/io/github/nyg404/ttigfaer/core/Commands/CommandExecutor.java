@@ -1,11 +1,15 @@
 package io.github.nyg404.ttigfaer.core.Commands;
 
 import io.github.nyg404.ttigfaer.api.Message.MessageContext;
+import io.github.nyg404.ttigfaer.core.Enum.MessageFilter;
 import io.github.nyg404.ttigfaer.core.Manager.RateLimitManager;
 import io.github.nyg404.ttigfaer.core.Utils.ArgumentRegistry;
+import lombok.Data;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
 import java.lang.reflect.Method;
+import java.util.EnumSet;
 import java.util.concurrent.Executor;
 
 /**
@@ -13,6 +17,7 @@ import java.util.concurrent.Executor;
  * Позволяет вызывать методы обработчиков команд синхронно или асинхронно,
  * с поддержкой ограничения частоты вызовов (rate limiting) и задержек.
  */
+@Data
 @Slf4j
 public class CommandExecutor {
     private final Object bean;
@@ -24,6 +29,9 @@ public class CommandExecutor {
     private final RateLimitManager rateLimitManager;
     private final int delay;
     private final ArgumentRegistry argumentRegistry;
+    private final EnumSet<MessageFilter> filters;
+
+
     /**
      * Конструктор CommandExecutor.
      *
@@ -36,7 +44,7 @@ public class CommandExecutor {
      * @param delay задержка перед выполнением команды (в секундах)
      */
     public CommandExecutor(Object bean, Method method, boolean isAsync, Executor asyncExecutor,
-                           int limit, int limitWindows, int delay, ArgumentRegistry argumentRegistry) {
+                           int limit, int limitWindows, int delay, ArgumentRegistry argumentRegistry, EnumSet<MessageFilter> filters) {
         this.bean = bean;
         this.method = method;
         this.isAsync = isAsync;
@@ -44,6 +52,7 @@ public class CommandExecutor {
         this.limit = limit;
         this.limitWindows = limitWindows;
         this.delay = delay;
+        this.filters = filters;
         this.rateLimitManager = new RateLimitManager(limit, limitWindows, asyncExecutor);
         this.argumentRegistry = argumentRegistry;
     }
@@ -95,5 +104,36 @@ public class CommandExecutor {
                 task.run();
             }
         }
+    }
+
+    public boolean matchesFilters(MessageContext ctx) {
+        if (filters.isEmpty()) return true; // Если фильтров нет, то подходит всё
+
+        for (MessageFilter filter : filters) {
+            switch (filter) {
+                case Text -> {
+                    if (ctx.getMessage() != null && ctx.getMessage().hasText()) return true;
+                }
+                case Photo -> {
+                    if (ctx.getMessage() != null && ctx.getMessage().hasPhoto()) return true;
+                }
+                case Video -> {
+                    if (ctx.getMessage() != null && ctx.getMessage().hasVideo()) return true;
+                }
+                case Voice -> {
+                    if (ctx.getMessage() != null && ctx.getMessage().hasVoice()) return true;
+                }
+                case Document -> {
+                    if (ctx.getMessage() != null && ctx.getMessage().hasDocument()) return true;
+                }
+                case Animation -> {
+                    if (ctx.getMessage() != null && ctx.getMessage().hasAnimation()) return true;
+                }
+                case GroupMedia -> {
+                    if (ctx.getMessage() != null && ctx.getMessage().isGroupMessage()) return true;
+                }
+            }
+        }
+        return false;
     }
 }

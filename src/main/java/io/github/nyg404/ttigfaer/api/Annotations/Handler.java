@@ -67,5 +67,11 @@ public @interface Handler {
      * @return строка с именем callBack
      */
     String callBack() default "";
+
+    /**
+     * Установка фильтров для {@link HandlerType}
+     * @return одиночный или массив фильтров.
+     */
+    String[] filters() default {};
 }
 
