@@ -2,6 +2,7 @@ package io.github.nyg404.ttigfaer.core.Commands;
 
 import io.github.nyg404.ttigfaer.api.Message.MessageContext;
 import io.github.nyg404.ttigfaer.core.Manager.RateLimitManager;
+import io.github.nyg404.ttigfaer.core.Utils.ArgumentRegistry;
 import lombok.extern.slf4j.Slf4j;
 
 import java.lang.reflect.Method;
@@ -22,7 +23,7 @@ public class CommandExecutor {
     private final int limitWindows;
     private final RateLimitManager rateLimitManager;
     private final int delay;
-
+    private final ArgumentRegistry argumentRegistry;
     /**
      * Конструктор CommandExecutor.
      *
@@ -35,7 +36,7 @@ public class CommandExecutor {
      * @param delay задержка перед выполнением команды (в секундах)
      */
     public CommandExecutor(Object bean, Method method, boolean isAsync, Executor asyncExecutor,
-                           int limit, int limitWindows, int delay) {
+                           int limit, int limitWindows, int delay, ArgumentRegistry argumentRegistry) {
         this.bean = bean;
         this.method = method;
         this.isAsync = isAsync;
@@ -44,6 +45,7 @@ public class CommandExecutor {
         this.limitWindows = limitWindows;
         this.delay = delay;
         this.rateLimitManager = new RateLimitManager(limit, limitWindows, asyncExecutor);
+        this.argumentRegistry = argumentRegistry;
     }
 
     /**
@@ -57,7 +59,23 @@ public class CommandExecutor {
                 if (delay > 0) {
                     Thread.sleep(delay * 1000L);
                 }
-                method.invoke(bean, ctx);
+
+                Class<?>[] paramTypes = method.getParameterTypes();
+                Object[] args = new Object[paramTypes.length];
+
+                for (int i = 0; i < paramTypes.length; i++) {
+                    if (paramTypes[i].isAssignableFrom(MessageContext.class)) {
+                        args[i] = ctx;
+                    } else {
+                        args[i] = argumentRegistry.getRaw(paramTypes[i]);
+                        if (args[i] == null) {
+                            throw new IllegalArgumentException("Не найден аргумент типа: " + paramTypes[i].getSimpleName());
+                        }
+                    }
+                }
+
+                method.invoke(bean, args);
+
             } catch (Exception e) {
                 log.error("Ошибка при {}вызове: {}", isAsync ? "асинхронном " : "",
                         ctx.getAction() != null ? ctx.getAction() : ctx.getCommand(), e);

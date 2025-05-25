@@ -7,14 +7,13 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.telegram.telegrambots.longpolling.TelegramBotsLongPollingApplication;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
-
-@Slf4j
-@Configuration
 /**
  * Конфигурация Spring для регистрации кастомного Telegram бота.
  * Создаёт и регистрирует бота в TelegramBotsLongPollingApplication,
  * используя настройки из BotSettings и бин CustomBot.
  */
+@Slf4j
+@Configuration
 public class RegisterCustomBot {
 
     /**

@@ -8,6 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.methods.ForwardMessage;
 import org.telegram.telegrambots.meta.api.methods.send.*;
+import org.telegram.telegrambots.meta.api.methods.updatingmessages.DeleteMessage;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageMedia;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText;
 import org.telegram.telegrambots.meta.api.objects.InputFile;
@@ -527,6 +528,24 @@ public class MessageService implements MessageServicIn {
             client.execute(builder.build());
         } catch (TelegramApiException e) {
             log.error("Ошибка при изменении сообщения {}: {}", chatId, e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Удаляет сообщение в чате по заданому идентификатору сообщения.
+     * @param chatId  Идентификатор чата, в котором находися сообщение
+     * @param messageID  Идентификатор сообщение, которое нужно изменить
+     */
+    @Override
+    @SuppressWarnings("all")
+    public void deleteMessage(long chatId, int messageID){
+        DeleteMessage.DeleteMessageBuilder builder = DeleteMessage.builder()
+                .chatId(chatId)
+                .messageId(messageID);
+        try {
+            client.execute(builder.build());
+        } catch (TelegramApiException e) {
+            log.error("Ошибка при удалении сообщения {}: {}", chatId, e.getMessage(), e);
         }
     }
 

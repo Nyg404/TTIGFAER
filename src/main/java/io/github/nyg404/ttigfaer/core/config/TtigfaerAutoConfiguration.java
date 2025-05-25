@@ -3,6 +3,7 @@ package io.github.nyg404.ttigfaer.core.config;
 import io.github.nyg404.ttigfaer.api.Interface.CommandHandler;
 import io.github.nyg404.ttigfaer.core.Manager.CommandManager;
 import io.github.nyg404.ttigfaer.core.Properties.AsyncProperties;
+import io.github.nyg404.ttigfaer.core.Utils.ArgumentRegistry;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -46,7 +47,7 @@ public class TtigfaerAutoConfiguration {
      * @return {@link CommandManager}
      */
     @Bean
-    public CommandManager commandManager(List<CommandHandler> handlers, @Qualifier("asyncExecutor") Executor asyncExecutor) {
-        return new CommandManager(handlers, asyncExecutor);
+    public CommandManager commandManager(List<CommandHandler> handlers, @Qualifier("asyncExecutor") Executor asyncExecutor, ArgumentRegistry argumentRegistry) {
+        return new CommandManager(handlers, asyncExecutor, argumentRegistry);
     }
 }

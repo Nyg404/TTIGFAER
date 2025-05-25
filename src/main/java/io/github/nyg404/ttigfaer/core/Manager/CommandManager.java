@@ -7,6 +7,7 @@ import io.github.nyg404.ttigfaer.api.Interface.CommandHandler;
 import io.github.nyg404.ttigfaer.api.Message.MessageContext;
 import io.github.nyg404.ttigfaer.core.Commands.CommandExecutor;
 import io.github.nyg404.ttigfaer.core.Enum.HandlerType;
+import io.github.nyg404.ttigfaer.core.Utils.ArgumentRegistry;
 import jakarta.annotation.PostConstruct;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -32,6 +33,7 @@ public class CommandManager {
     private final Map<HandlerType, Map<String, CommandExecutor>> handlersByType = new HashMap<>();
     private final List<CommandHandler> handlers;
     private final Executor asyncExecutor;
+    private final ArgumentRegistry argumentRegistry;
 
     /**
      * Конструктор CommandManager.
@@ -39,9 +41,10 @@ public class CommandManager {
      * @param handlers список всех зарегистрированных обработчиков команд
      * @param asyncExecutor исполнитель для асинхронных задач
      */
-    public CommandManager(List<CommandHandler> handlers, @Qualifier("asyncExecutor") Executor asyncExecutor) {
+    public CommandManager(List<CommandHandler> handlers, @Qualifier("asyncExecutor") Executor asyncExecutor, ArgumentRegistry argumentRegistry) {
         this.handlers = handlers;
         this.asyncExecutor = asyncExecutor;
+        this.argumentRegistry = argumentRegistry;
     }
 
     /**
@@ -73,7 +76,7 @@ public class CommandManager {
                     if (!method.canAccess(handler)) {
                         method.setAccessible(true);
                     }
-                    CommandExecutor executor = new CommandExecutor(handler, method, isAsync, asyncExecutor, limit, limitWindows, delay);
+                    CommandExecutor executor = new CommandExecutor(handler, method, isAsync, asyncExecutor, limit, limitWindows, delay, argumentRegistry);
                     handlersByType.computeIfAbsent(type, k -> new HashMap<>());
                     if (type == HandlerType.REGISTER_COMMAND) {
                         String[] cmds = annotation.commands();

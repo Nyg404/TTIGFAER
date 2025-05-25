@@ -78,6 +78,7 @@ public interface MessageServicIn {
     void editMedia(long ChatId, int messageId, InputMedia file);
     void editMedia(long ChatId, int messageId, InputMedia file, EditMediaOptions options);
 
+    void deleteMessage(long chatId, int messageID);
 
 
 }
