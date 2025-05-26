@@ -28,7 +28,6 @@ import java.util.concurrent.Executor;
  * <ul>
  *     <li>{@link HandlerType#REGISTER_COMMAND} - Обработка команд (начинаются с /)</li>
  *     <li>{@link HandlerType#ON_CALLBACK_QUERY} - Обработка callback-запросов</li>
- *     <li>{@link HandlerType#ON_TEXT} - Обработка текстовых сообщений</li>
  *     <li>{@link HandlerType#ON_MESSAGE} - Обработка сообщений с медиа и другими типами контента</li>
  *     <li>{@link HandlerType#RESPOND_TO_BOT_MESSAGE} - Ответы на сообщения бота</li>
  * </ul>
@@ -39,6 +38,7 @@ import java.util.concurrent.Executor;
  *
  * @author tt
  */
+
 @Component
 @Slf4j
 public class CommandManager {
@@ -184,9 +184,6 @@ public class CommandManager {
             }
         }
 
-        if (ctx.getMessageText() != null && !ctx.getMessageText().isEmpty()) {
-            invokeHandlers(HandlerType.ON_TEXT, ctx);
-        }
 
         if (ctx.getCommand() != null && !ctx.getCommand().isEmpty()) {
             CommandExecutor exec = getExecutor(HandlerType.REGISTER_COMMAND, ctx.getCommand());

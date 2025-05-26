@@ -28,6 +28,7 @@ public class HandlerAnnotationProcessor extends AbstractProcessor {
             HandlerType handlerType = handler.value();
             String[] commands = handler.commands();
             String callBack = handler.callBack();
+            String[] filters = handler.filters();
 
             // Проверка для commands
             if (!handlerType.equals(HandlerType.REGISTER_COMMAND) && commands.length > 0) {
@@ -37,6 +38,10 @@ public class HandlerAnnotationProcessor extends AbstractProcessor {
             // Проверка для callBack
             if (!handlerType.equals(HandlerType.ON_CALLBACK_QUERY) && !callBack.isEmpty()) {
                 error(element, "Атрибут 'callBack' допустим только для HandlerType.CALLBACK.");
+            }
+
+            if(!handlerType.equals(HandlerType.ON_MESSAGE) && filters.length > 0){
+                error(element, "Атрибут 'filters' допустим только для HandlerType.ON_MESSAGE");
             }
         }
         return true;

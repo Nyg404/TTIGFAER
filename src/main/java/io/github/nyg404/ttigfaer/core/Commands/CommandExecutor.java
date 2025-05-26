@@ -129,6 +129,9 @@ public class CommandExecutor {
                 case Animation -> {
                     if (ctx.getMessage() != null && ctx.getMessage().hasAnimation()) return true;
                 }
+                case Sticker -> {
+                    if(ctx.getMessage() != null && ctx.getMessage().hasSticker()) return true;
+                }
                 case GroupMedia -> {
                     if (ctx.getMessage() != null && ctx.getMessage().isGroupMessage()) return true;
                 }
