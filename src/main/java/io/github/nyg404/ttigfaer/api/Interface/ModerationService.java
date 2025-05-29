@@ -23,6 +23,14 @@ public interface ModerationService {
     void banUser(long serverId, long userId, int duration, Boolean revokeMessages, String messageToChat, String messageToUser) throws TelegramApiException;
 
     /**
+     *
+     * @param serverId ID сервера/чата
+     * @param userId Id пользователя
+     * @throws TelegramApiException при ошибки Telegram API
+     */
+    void unBanUser(long serverId, long userId) throws TelegramApiException;
+
+    /**
      * Замутить пользователя.
      *
      * @param serverId      ID сервера/чата

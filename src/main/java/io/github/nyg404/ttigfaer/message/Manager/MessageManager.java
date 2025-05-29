@@ -5,6 +5,7 @@ import io.github.nyg404.ttigfaer.api.Message.MessageContext;
 import io.github.nyg404.ttigfaer.api.Interface.MessageService;
 import io.github.nyg404.ttigfaer.message.Options.*;
 import io.github.nyg404.ttigfaer.message.Utils.MessageOptionUtils;
+import jakarta.annotation.PreDestroy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -21,7 +22,9 @@ import org.telegram.telegrambots.meta.generics.TelegramClient;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Сервис для отправки и редактирования сообщений, а также мультимедийного контента
@@ -39,6 +42,7 @@ import java.util.concurrent.CompletableFuture;
 @Service
 public class MessageManager implements MessageService, MessageServiceAsync {
     private final TelegramClient client;
+    private final ExecutorService executorService;
 
 //    @Override
 //    public void sendMessage(MessageContext context, String text) {
@@ -89,9 +93,30 @@ public class MessageManager implements MessageService, MessageServiceAsync {
      */
     @Override
     public void sendReplayMessage(MessageContext context, String text) {
-        sendMessage(context.getChatId(), text, MessageOptions.builder()
-                .replyToMessageId(context.getReplyToMessageId())
-                .build());
+        sendReplayMessage(context, text, null);
+    }
+
+    /**
+     * Отправить ответ на сообщение в контексте.
+     *
+     * @param context Контекст сообщения
+     * @param text    Текст ответа
+     * @param options Опции сообщения.
+     */
+    @Override
+    @SuppressWarnings("all")
+    public void sendReplayMessage(MessageContext context, String text, MessageOptions options) {
+        SendMessage.SendMessageBuilder builder = SendMessage.builder()
+                .chatId(context.getChatId())
+                .replyToMessageId(context.getReplyToMessageId());
+        MessageOptionUtils.applyMessageOptions(builder, options);
+
+        try {
+            client.execute(builder.build());
+            log.info("Сообщение отправлено в чат {}", context.getChatId());
+        } catch (TelegramApiException e) {
+            log.error("Ошибка при отправке сообщения в чат {}: {}", context.getChatId(), e.getMessage(), e);
+        }
     }
 
     /**
@@ -557,24 +582,23 @@ public class MessageManager implements MessageService, MessageServiceAsync {
      *
      * @param chatId ID чата
      * @param text   Текст сообщения
-     * @return CompletableFuture, завершающийся по окончании отправки
      */
     @Override
-    public CompletableFuture<Void> sendMessageAsync(long chatId, String text) {
-        return sendMessageAsync(chatId, text, null);
+    public void sendMessageAsync(long chatId, String text) {
+        sendMessageAsync(chatId, text, null);
     }
+
     /**
      * Асинхронно отправить текстовое сообщение в чат с дополнительными опциями.
      *
      * @param chatId  ID чата
      * @param text    Текст сообщения
      * @param options Опции сообщения
-     * @return CompletableFuture, завершающийся по окончании отправки
      */
     @Override
     @SuppressWarnings("all")
-    public CompletableFuture<Void> sendMessageAsync(long chatId, String text, MessageOptions options) {
-        return CompletableFuture.runAsync(() -> {
+    public void sendMessageAsync(long chatId, String text, MessageOptions options) {
+        executorService.submit(() -> {
             SendMessage.SendMessageBuilder builder = SendMessage.builder()
                     .chatId(String.valueOf(chatId))
                     .text(text);
@@ -586,37 +610,38 @@ public class MessageManager implements MessageService, MessageServiceAsync {
                 log.info("Асинхронно отправлено сообщение в чат {}", chatId);
             } catch (TelegramApiException e) {
                 log.error("Ошибка при асинхронной отправке сообщения в чат {}: {}", chatId, e.getMessage(), e);
-                throw new RuntimeException(e); // Проброс ошибки в CompletableFuture
+                throw new RuntimeException(e); // Для синхронных методов
             }
         });
     }
-
 
     /**
      * Асинхронно отправить ответ на сообщение в контексте.
      *
      * @param context Контекст сообщения
      * @param text    Текст ответа
-     * @return CompletableFuture, завершающийся по окончании отправки
      */
     @Override
-    public CompletableFuture<Void> sendReplayMessageAsync(MessageContext context, String text) {
-        return CompletableFuture.runAsync(() -> sendMessage(context.getChatId(), text, MessageOptions.builder()
-                .replyToMessageId(context.getReplyToMessageId())
-                .build()));
+    public void sendReplayMessageAsync(MessageContext context, String text) {
+        executorService.submit(() -> {
+            sendMessage(context.getChatId(), text, MessageOptions.builder()
+                    .replyToMessageId(context.getReplyToMessageId())
+                    .build());
+            log.info("Асинхронно отправлен ответ в чат {}", context.getChatId());
+        });
     }
 
     /**
      * Асинхронно переслать сообщение из одного чата в другой.
      *
-     * @param context     Контекст исходного сообщения
+     * @param context      Контекст исходного сообщения
      * @param targetChatId ID целевого чата
-     * @param message     Сообщение для пересылки
-     * @return CompletableFuture с пересланным сообщением
+     * @param message      Сообщение для пересылки
+     * @return Future с пересланным сообщением
      */
     @Override
-    public CompletableFuture<Message> sendForwardMessageAsync(MessageContext context, long targetChatId, Message message) {
-        return CompletableFuture.supplyAsync(() -> {
+    public Future<Message> sendForwardMessageAsync(MessageContext context, long targetChatId, Message message) {
+        return executorService.submit(() -> {
             ForwardMessage forwardMessage = ForwardMessage.builder()
                     .chatId(String.valueOf(targetChatId))
                     .fromChatId(String.valueOf(message.getChatId()))
@@ -634,17 +659,15 @@ public class MessageManager implements MessageService, MessageServiceAsync {
         });
     }
 
-
     /**
      * Асинхронно отправить аудио файл.
      *
      * @param chatId ID чата
      * @param file   Файл аудио
-     * @return CompletableFuture, завершающийся по окончании отправки
      */
     @Override
-    public CompletableFuture<Void> sendAudioAsync(long chatId, InputFile file) {
-        return sendAudioAsync(chatId, file, null);
+    public void sendAudioAsync(long chatId, InputFile file) {
+        sendAudioAsync(chatId, file, null);
     }
 
     /**
@@ -653,12 +676,11 @@ public class MessageManager implements MessageService, MessageServiceAsync {
      * @param chatId  ID чата
      * @param file    Файл аудио
      * @param options Опции аудио
-     * @return CompletableFuture, завершающийся по окончании отправки
      */
     @Override
     @SuppressWarnings("all")
-    public CompletableFuture<Void> sendAudioAsync(long chatId, InputFile file, AudioOptions options) {
-        return CompletableFuture.runAsync(() -> {
+    public void sendAudioAsync(long chatId, InputFile file, AudioOptions options) {
+        executorService.submit(() -> {
             SendAudio.SendAudioBuilder builder = SendAudio.builder()
                     .chatId(String.valueOf(chatId))
                     .audio(file);
@@ -667,9 +689,10 @@ public class MessageManager implements MessageService, MessageServiceAsync {
 
             try {
                 client.execute(builder.build());
+                log.info("Асинхронно отправлено аудио в чат {}", chatId);
             } catch (TelegramApiException e) {
                 log.error("Ошибка при отправке аудио в чат {}: {}", chatId, e.getMessage(), e);
-                throw new RuntimeException("Ошибка при пересылке сообщения", e);
+                throw new RuntimeException(e); // Для синхронных методов
             }
         });
     }
@@ -679,11 +702,10 @@ public class MessageManager implements MessageService, MessageServiceAsync {
      *
      * @param chatId ID чата
      * @param file   Файл фото
-     * @return CompletableFuture, завершающийся по окончании отправки
      */
     @Override
-    public CompletableFuture<Void> sendPhotoAsync(long chatId, InputFile file) {
-        return sendPhotoAsync(chatId, file, null);
+    public void sendPhotoAsync(long chatId, InputFile file) {
+        sendPhotoAsync(chatId, file, null);
     }
 
     /**
@@ -692,22 +714,23 @@ public class MessageManager implements MessageService, MessageServiceAsync {
      * @param chatId  ID чата
      * @param file    Файл фото
      * @param options Опции фото
-     * @return CompletableFuture, завершающийся по окончании отправки
      */
     @Override
     @SuppressWarnings("all")
-    public CompletableFuture<Void> sendPhotoAsync(long chatId, InputFile file, PhotoOptions options) {
-        return CompletableFuture.runAsync(() -> {
+    public void sendPhotoAsync(long chatId, InputFile file, PhotoOptions options) {
+        executorService.submit(() -> {
             SendPhoto.SendPhotoBuilder builder = SendPhoto.builder()
-                    .chatId(chatId)
+                    .chatId(String.valueOf(chatId))
                     .photo(file);
 
             MessageOptionUtils.applyPhotoOptions(builder, options, file);
 
             try {
                 client.execute(builder.build());
+                log.info("Асинхронно отправлено фото в чат {}", chatId);
             } catch (TelegramApiException e) {
-                log.error("Ошибка отправки фотографии: {}", e.getMessage(), e);
+                log.error("Ошибка при отправке фото в чат {}: {}", chatId, e.getMessage(), e);
+                throw new RuntimeException(e); // Для синхронных методов
             }
         });
     }
@@ -717,11 +740,10 @@ public class MessageManager implements MessageService, MessageServiceAsync {
      *
      * @param chatId ID чата
      * @param file   Файл анимации
-     * @return CompletableFuture, завершающийся по окончании отправки
      */
     @Override
-    public CompletableFuture<Void> sendAnimationAsync(long chatId, InputFile file) {
-        return sendAnimationAsync(chatId, file, null);
+    public void sendAnimationAsync(long chatId, InputFile file) {
+        sendAnimationAsync(chatId, file, null);
     }
 
     /**
@@ -730,22 +752,23 @@ public class MessageManager implements MessageService, MessageServiceAsync {
      * @param chatId  ID чата
      * @param file    Файл анимации
      * @param options Опции анимации
-     * @return CompletableFuture, завершающийся по окончании отправки
      */
     @Override
     @SuppressWarnings("all")
-    public CompletableFuture<Void> sendAnimationAsync(long chatId, InputFile file, AnimationOptions options) {
-        return CompletableFuture.runAsync(() -> {
+    public void sendAnimationAsync(long chatId, InputFile file, AnimationOptions options) {
+        executorService.submit(() -> {
             SendAnimation.SendAnimationBuilder builder = SendAnimation.builder()
-                    .chatId(chatId)
+                    .chatId(String.valueOf(chatId))
                     .animation(file);
 
             MessageOptionUtils.applyAnimationOptions(builder, options, file);
 
             try {
                 client.execute(builder.build());
+                log.info("Асинхронно отправлена анимация в чат {}", chatId);
             } catch (TelegramApiException e) {
-                log.error("Ошибка при отправке анимации: {}", e.getMessage(), e);
+                log.error("Ошибка при отправке анимации в чат {}: {}", chatId, e.getMessage(), e);
+                throw new RuntimeException(e); // Для синхронных методов
             }
         });
     }
@@ -755,11 +778,10 @@ public class MessageManager implements MessageService, MessageServiceAsync {
      *
      * @param chatId ID чата
      * @param file   Файл видео
-     * @return CompletableFuture, завершающийся по окончании отправки
      */
     @Override
-    public CompletableFuture<Void> sendVideoAsync(long chatId, InputFile file) {
-        return sendVideoAsync(chatId, file, null);
+    public void sendVideoAsync(long chatId, InputFile file) {
+        sendVideoAsync(chatId, file, null);
     }
 
     /**
@@ -768,22 +790,23 @@ public class MessageManager implements MessageService, MessageServiceAsync {
      * @param chatId  ID чата
      * @param file    Файл видео
      * @param options Опции видео
-     * @return CompletableFuture, завершающийся по окончании отправки
      */
     @Override
     @SuppressWarnings("all")
-    public CompletableFuture<Void> sendVideoAsync(long chatId, InputFile file, VideoOptions options) {
-        return CompletableFuture.runAsync(() -> {
+    public void sendVideoAsync(long chatId, InputFile file, VideoOptions options) {
+        executorService.submit(() -> {
             SendVideo.SendVideoBuilder builder = SendVideo.builder()
-                    .chatId(chatId)
+                    .chatId(String.valueOf(chatId))
                     .video(file);
 
             MessageOptionUtils.applyVideoOptions(builder, options, file);
 
             try {
                 client.execute(builder.build());
+                log.info("Асинхронно отправлено видео в чат {}", chatId);
             } catch (TelegramApiException e) {
-                log.error("Ошибка при отправке видео: {}", e.getMessage(), e);
+                log.error("Ошибка при отправке видео в чат {}: {}", chatId, e.getMessage(), e);
+                throw new RuntimeException(e); // Для синхронных методов
             }
         });
     }
@@ -793,11 +816,10 @@ public class MessageManager implements MessageService, MessageServiceAsync {
      *
      * @param chatId ID чата
      * @param file   Файл документа
-     * @return CompletableFuture, завершающийся по окончании отправки
      */
     @Override
-    public CompletableFuture<Void> sendDocumentAsync(long chatId, InputFile file) {
-        return sendDocumentAsync(chatId, file, null);
+    public void sendDocumentAsync(long chatId, InputFile file) {
+        sendDocumentAsync(chatId, file, null);
     }
 
     /**
@@ -806,22 +828,23 @@ public class MessageManager implements MessageService, MessageServiceAsync {
      * @param chatId  ID чата
      * @param file    Файл документа
      * @param options Опции документа
-     * @return CompletableFuture, завершающийся по окончании отправки
      */
     @Override
     @SuppressWarnings("all")
-    public CompletableFuture<Void> sendDocumentAsync(long chatId, InputFile file, DocumentOptions options) {
-        return CompletableFuture.runAsync(() -> {
+    public void sendDocumentAsync(long chatId, InputFile file, DocumentOptions options) {
+        executorService.submit(() -> {
             SendDocument.SendDocumentBuilder builder = SendDocument.builder()
-                    .chatId(chatId)
+                    .chatId(String.valueOf(chatId))
                     .document(file);
 
             MessageOptionUtils.applyDocumentOptions(builder, options, file);
 
             try {
                 client.execute(builder.build());
+                log.info("Асинхронно отправлен документ в чат {}", chatId);
             } catch (TelegramApiException e) {
-                log.error("Ошибка при отправке документа: {}", e.getMessage(), e);
+                log.error("Ошибка при отправке документа в чат {}: {}", chatId, e.getMessage(), e);
+                throw new RuntimeException(e); // Для синхронных методов
             }
         });
     }
@@ -831,11 +854,10 @@ public class MessageManager implements MessageService, MessageServiceAsync {
      *
      * @param chatId ID чата
      * @param file   Файл голоса
-     * @return CompletableFuture, завершающийся по окончании отправки
      */
     @Override
-    public CompletableFuture<Void> sendVoiceAsync(long chatId, InputFile file) {
-        return sendVoiceAsync(chatId, file, null);
+    public void sendVoiceAsync(long chatId, InputFile file) {
+        sendVoiceAsync(chatId, file, null);
     }
 
     /**
@@ -844,12 +866,11 @@ public class MessageManager implements MessageService, MessageServiceAsync {
      * @param chatId  ID чата
      * @param file    Файл голоса
      * @param options Опции голосового сообщения
-     * @return CompletableFuture, завершающийся по окончании отправки
      */
     @Override
     @SuppressWarnings("all")
-    public CompletableFuture<Void> sendVoiceAsync(long chatId, InputFile file, VoiceOptions options) {
-        return CompletableFuture.runAsync(() -> {
+    public void sendVoiceAsync(long chatId, InputFile file, VoiceOptions options) {
+        executorService.submit(() -> {
             SendVoice.SendVoiceBuilder builder = SendVoice.builder()
                     .chatId(String.valueOf(chatId))
                     .voice(file);
@@ -858,8 +879,10 @@ public class MessageManager implements MessageService, MessageServiceAsync {
 
             try {
                 client.execute(builder.build());
+                log.info("Асинхронно отправлено голосовое сообщение в чат {}", chatId);
             } catch (TelegramApiException e) {
                 log.error("Ошибка при отправке голосового сообщения в чат {}: {}", chatId, e.getMessage(), e);
+                throw new RuntimeException(e); // Для синхронных методов
             }
         });
     }
@@ -869,11 +892,10 @@ public class MessageManager implements MessageService, MessageServiceAsync {
      *
      * @param chatId ID чата
      * @param file   Файл стикера
-     * @return CompletableFuture, завершающийся по окончании отправки
      */
     @Override
-    public CompletableFuture<Void> sendStickerAsync(long chatId, InputFile file) {
-        return sendStickerAsync(chatId, file, null);
+    public void sendStickerAsync(long chatId, InputFile file) {
+        sendStickerAsync(chatId, file, null);
     }
 
     /**
@@ -882,21 +904,23 @@ public class MessageManager implements MessageService, MessageServiceAsync {
      * @param chatId  ID чата
      * @param file    Файл стикера
      * @param options Опции стикера
-     * @return CompletableFuture, завершающийся по окончании отправки
      */
     @Override
     @SuppressWarnings("all")
-    public CompletableFuture<Void> sendStickerAsync(long chatId, InputFile file, StickerOptions options) {
-        return CompletableFuture.runAsync(() -> {
+    public void sendStickerAsync(long chatId, InputFile file, StickerOptions options) {
+        executorService.submit(() -> {
             SendSticker.SendStickerBuilder builder = SendSticker.builder()
-                    .chatId(chatId)
+                    .chatId(String.valueOf(chatId))
                     .sticker(file);
+
             MessageOptionUtils.applyStickerOptions(builder, options, file);
 
             try {
                 client.execute(builder.build());
+                log.info("Асинхронно отправлен стикер в чат {}", chatId);
             } catch (TelegramApiException e) {
-                log.error("Ошибка при отправке геолокации в чат {}: {}", chatId, e.getMessage(), e);
+                log.error("Ошибка при отправке стикера в чат {}: {}", chatId, e.getMessage(), e);
+                throw new RuntimeException(e); // Для синхронных методов
             }
         });
     }
@@ -906,11 +930,10 @@ public class MessageManager implements MessageService, MessageServiceAsync {
      *
      * @param chatId     ID чата
      * @param groupMedia Коллекция медиа объектов для отправки
-     * @return CompletableFuture, завершающийся по окончании отправки
      */
     @Override
-    public CompletableFuture<Void> sendMediaGroupAsync(long chatId, Collection<? extends InputMedia> groupMedia) {
-        return sendMediaGroupAsync(chatId, groupMedia, null);
+    public void sendMediaGroupAsync(long chatId, Collection<? extends InputMedia> groupMedia) {
+        sendMediaGroupAsync(chatId, groupMedia, null);
     }
 
     /**
@@ -919,12 +942,11 @@ public class MessageManager implements MessageService, MessageServiceAsync {
      * @param chatId     ID чата
      * @param groupMedia Коллекция медиа объектов
      * @param options    Опции медиа группы
-     * @return CompletableFuture, завершающийся по окончании отправки
      */
     @Override
     @SuppressWarnings("all")
-    public CompletableFuture<Void> sendMediaGroupAsync(long chatId, Collection<? extends InputMedia> groupMedia, MediaOptions options) {
-        return CompletableFuture.runAsync(() -> {
+    public void sendMediaGroupAsync(long chatId, Collection<? extends InputMedia> groupMedia, MediaOptions options) {
+        executorService.submit(() -> {
             if (groupMedia == null || groupMedia.isEmpty()) {
                 log.warn("Попытка отправки пустой медиа-группы в чат {}", chatId);
                 return;
@@ -941,7 +963,7 @@ public class MessageManager implements MessageService, MessageServiceAsync {
                 log.info("Медиа-группа ({} элементов) отправлена в чат {}", groupMedia.size(), chatId);
             } catch (TelegramApiException e) {
                 log.error("Ошибка при отправке медиа-группы в чат {}: {}", chatId, e.getMessage(), e);
-                throw new RuntimeException("Не удалось отправить медиа-группу в чат " + chatId, e);
+                throw new RuntimeException(e); // Для синхронных методов
             }
         });
     }
@@ -952,11 +974,10 @@ public class MessageManager implements MessageService, MessageServiceAsync {
      * @param chatId    ID чата
      * @param messageId ID сообщения
      * @param text      Новый текст сообщения
-     * @return CompletableFuture, завершающийся по окончании редактирования
      */
     @Override
-    public CompletableFuture<Void> editTextAsync(long chatId, int messageId, String text) {
-        return editTextAsync(chatId, messageId, text, null);
+    public void editTextAsync(long chatId, int messageId, String text) {
+        editTextAsync(chatId, messageId, text, null);
     }
 
     /**
@@ -966,26 +987,27 @@ public class MessageManager implements MessageService, MessageServiceAsync {
      * @param messageId ID сообщения
      * @param text      Новый текст сообщения
      * @param options   Опции редактирования текста
-     * @return CompletableFuture, завершающийся по окончании редактирования
      */
     @Override
     @SuppressWarnings("all")
-    public CompletableFuture<Void> editTextAsync(long chatId, int messageId, String text, EditTextOptions options) {
-        return CompletableFuture.runAsync(() -> {
+    public void editTextAsync(long chatId, int messageId, String text, EditTextOptions options) {
+        executorService.submit(() -> {
             EditMessageText.EditMessageTextBuilder builder = EditMessageText.builder()
-                    .chatId(chatId)
+                    .chatId(String.valueOf(chatId))
                     .messageId(messageId)
                     .text(text);
+
             MessageOptionUtils.applyEditTextOptions(builder, options);
 
             try {
                 client.execute(builder.build());
+                log.info("Асинхронно отредактировано сообщение в чате {}", chatId);
             } catch (TelegramApiException e) {
-                log.error("Ошибка при изменения сообщения {}: {}", chatId, e.getMessage(), e);
+                log.error("Ошибка при редактировании сообщения в чате {}: {}", chatId, e.getMessage(), e);
+                throw new RuntimeException(e); // Для синхронных методов
             }
         });
     }
-
 
     /**
      * Асинхронно отредактировать медиа сообщение.
@@ -993,11 +1015,10 @@ public class MessageManager implements MessageService, MessageServiceAsync {
      * @param chatId    ID чата
      * @param messageId ID сообщения
      * @param file      Новый медиа файл
-     * @return CompletableFuture, завершающийся по окончании редактирования
      */
     @Override
-    public CompletableFuture<Void> editMediaAsync(long chatId, int messageId, InputMedia file) {
-        return editMediaAsync(chatId, messageId, file, null);
+    public void editMediaAsync(long chatId, int messageId, InputMedia file) {
+        editMediaAsync(chatId, messageId, file, null);
     }
 
     /**
@@ -1007,21 +1028,24 @@ public class MessageManager implements MessageService, MessageServiceAsync {
      * @param messageId ID сообщения
      * @param file      Новый медиа файл
      * @param options   Опции редактирования медиа
-     * @return CompletableFuture, завершающийся по окончании редактирования
      */
     @Override
     @SuppressWarnings("all")
-    public CompletableFuture<Void> editMediaAsync(long chatId, int messageId, InputMedia file, EditMediaOptions options) {
-        return CompletableFuture.runAsync(() -> {
+    public void editMediaAsync(long chatId, int messageId, InputMedia file, EditMediaOptions options) {
+        executorService.submit(() -> {
             EditMessageMedia.EditMessageMediaBuilder builder = EditMessageMedia.builder()
                     .chatId(String.valueOf(chatId))
                     .messageId(messageId)
                     .media(file);
+
             MessageOptionUtils.applyEditMediaOptions(builder, options);
+
             try {
                 client.execute(builder.build());
+                log.info("Асинхронно отредактировано медиа в чате {}", chatId);
             } catch (TelegramApiException e) {
-                log.error("Ошибка при изменении сообщения {}: {}", chatId, e.getMessage(), e);
+                log.error("Ошибка при редактировании медиа в чате {}: {}", chatId, e.getMessage(), e);
+                throw new RuntimeException(e); // Для синхронных методов
             }
         });
     }
@@ -1031,20 +1055,39 @@ public class MessageManager implements MessageService, MessageServiceAsync {
      *
      * @param chatId    ID чата
      * @param messageId ID сообщения
-     * @return CompletableFuture, завершающийся по окончании удаления
      */
     @Override
     @SuppressWarnings("all")
-    public CompletableFuture<Void> deleteMessageAsync(long chatId, int messageId) {
-        return CompletableFuture.runAsync(() -> {
+    public void deleteMessageAsync(long chatId, int messageId) {
+        executorService.submit(() -> {
             DeleteMessage.DeleteMessageBuilder builder = DeleteMessage.builder()
-                    .chatId(chatId)
+                    .chatId(String.valueOf(chatId))
                     .messageId(messageId);
+
             try {
                 client.execute(builder.build());
+                log.info("Асинхронно удалено сообщение в чате {}", chatId);
             } catch (TelegramApiException e) {
-                log.error("Ошибка при удалении сообщения {}: {}", chatId, e.getMessage(), e);
+                log.error("Ошибка при удалении сообщения в чате {}: {}", chatId, e.getMessage(), e);
+                throw new RuntimeException(e); // Для синхронных методов
             }
         });
+    }
+    /**
+     * Завершает пул потоков при уничтожении бина.
+     */
+    @PreDestroy
+    public void shutdown() {
+        executorService.shutdown();
+        try {
+            if (!executorService.awaitTermination(60, TimeUnit.SECONDS)) {
+                executorService.shutdownNow();
+                log.warn("Принудительное завершение пула потоков");
+            }
+        } catch (InterruptedException e) {
+            executorService.shutdownNow();
+            log.error("Ошибка при закрытии пула потоков: {}", e.getMessage(), e);
+            Thread.currentThread().interrupt();
+        }
     }
 }

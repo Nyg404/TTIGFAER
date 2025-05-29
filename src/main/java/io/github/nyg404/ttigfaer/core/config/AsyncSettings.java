@@ -2,10 +2,13 @@ package io.github.nyg404.ttigfaer.core.config;
 
 import io.github.nyg404.ttigfaer.core.Properties.AsyncProperties;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
+
+import java.util.concurrent.ExecutorService;
 
 /**
  * Конфигурация асинхронного исполнителя задач.
@@ -32,4 +35,11 @@ public class AsyncSettings {
         executor.initialize();
         return executor;
     }
+
+    @Bean
+    @ConditionalOnMissingBean(ExecutorService.class)
+    public ExecutorService executorService(@Qualifier("asyncExecutor") ThreadPoolTaskExecutor taskExecutor) {
+        return taskExecutor.getThreadPoolExecutor();
+    }
+
 }

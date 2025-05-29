@@ -6,18 +6,20 @@ import io.github.nyg404.ttigfaer.api.Interface.async.ModerationAsyncService;
 import io.github.nyg404.ttigfaer.api.Interface.ModerationService;
 import io.github.nyg404.ttigfaer.message.Options.ChatPermissionsOptions;
 import io.github.nyg404.ttigfaer.message.Utils.ChatPermissionOptions;
+import jakarta.annotation.PreDestroy;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.telegram.telegrambots.meta.api.methods.groupadministration.*;
 import org.telegram.telegrambots.meta.api.objects.ChatPermissions;
-import org.telegram.telegrambots.meta.api.objects.User;
 import org.telegram.telegrambots.meta.api.objects.chatmember.ChatMember;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.meta.generics.TelegramClient;
 
-import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -33,6 +35,7 @@ import java.util.concurrent.TimeUnit;
 public class ModerationManager implements ModerationService, ModerationAsyncService {
     private final TelegramClient client;
     private final MessageManager msv;
+    private final ExecutorService executorService; // Внедряется ThreadPoolTaskExecutor из AsyncSettings
 
     // Кэш для статусов пользователей: ключ — serverId:userId, значение — статус (creator, administrator, etc.)
     private final Cache<String, String> memberStatusCache = Caffeine.newBuilder()
@@ -48,11 +51,10 @@ public class ModerationManager implements ModerationService, ModerationAsyncServ
      * @param revokeMessages если true — удалять все сообщения пользователя из чата
      * @param messageToChat сообщение для отправки в чат после бана (если не пустое)
      * @param messageToUser сообщение для отправки пользователю после бана (если не пустое)
-     * @return CompletableFuture, завершающийся по окончании операции
      * @throws TelegramApiException при ошибках API Telegram
      */
     @Override
-    public CompletableFuture<Void> asyncBanUser(long serverId, long userId, int duration, Boolean revokeMessages, String messageToChat, String messageToUser) throws TelegramApiException {
+    public void asyncBanUser(long serverId, long userId, int duration, Boolean revokeMessages, String messageToChat, String messageToUser) throws TelegramApiException {
         long untilDate = System.currentTimeMillis() / 1000L + duration;
         BanChatMember request = BanChatMember.builder()
                 .chatId(serverId)
@@ -61,18 +63,43 @@ public class ModerationManager implements ModerationService, ModerationAsyncServ
                 .revokeMessages(revokeMessages)
                 .build();
 
-        return client.executeAsync(request)
-                .thenAccept(response -> {
-                    log.info("Пользователь забанен: userId={}", userId);
-                    sendIfNotEmpty(messageToUser, userId);
-                    sendIfNotEmpty(messageToChat, serverId);
-                })
-                .exceptionally(e -> {
-                    log.error("Ошибка при бане: userId={}, serverId={}, error={}", userId, serverId, e.getMessage(), e);
-                    msv.sendMessage(serverId, "Ошибка при бане: " + e.getMessage());
-                    return null;
-                });
+        executorService.submit(() -> {
+            try {
+                client.executeAsync(request);
+                log.info("Пользователь забанен: userId={}", userId);
+                sendIfNotEmpty(messageToUser, userId);
+                sendIfNotEmpty(messageToChat, serverId);
+            } catch (TelegramApiException e) {
+                log.error("Ошибка при бане: userId={}, serverId={}, error={}", userId, serverId, e.getMessage(), e);
+                msv.sendMessage(serverId, "Ошибка при бане: " + e.getMessage());
+            }
+        });
     }
+
+    /**
+     * @param serverId ID сервера/чата
+     * @param userId   Id пользователя
+     * @throws TelegramApiException при ошибки Telegram API
+     */
+    @Override
+    public void asyncUnBanUser(long serverId, long userId) throws TelegramApiException {
+        UnbanChatMember request = UnbanChatMember.builder()
+                .chatId(serverId)
+                .userId(userId)
+                .build();
+        executorService.submit(() -> {
+            try {
+                client.executeAsync(request);
+                log.info("Пользователь раззабанен: userId={}", userId);
+            } catch (TelegramApiException e) {
+                log.error("Ошибка при разбане: userId={}, serverId={}, error={}", userId, serverId, e.getMessage(), e);
+                msv.sendMessage(serverId, "Ошибка при бане: " + e.getMessage());
+            }
+        });
+
+
+    }
+
     /**
      * Асинхронно замутить пользователя на заданное время с опциями прав.
      * @param serverId ID чата
@@ -81,16 +108,14 @@ public class ModerationManager implements ModerationService, ModerationAsyncServ
      * @param messageToChat сообщение в чат (если не пустое)
      * @param messageToUser сообщение пользователю (если не пустое)
      * @param options настройки прав при муте
-     * @return CompletableFuture с результатом операции
      * @throws TelegramApiException при ошибках API
      */
     @Override
-    public CompletableFuture<Void> asyncMuteUser(long serverId, long userId, int duration, String messageToChat, String messageToUser, ChatPermissionsOptions options) throws TelegramApiException {
-        // Валидация длительности
+    public void asyncMuteUser(long serverId, long userId, int duration, String messageToChat, String messageToUser, ChatPermissionsOptions options) throws TelegramApiException {
         if (duration <= 0 || duration > 1440) {
             log.error("Некорректная длительность мута: duration={}", duration);
             msv.sendMessage(serverId, "Ошибка: Длительность мута должна быть от 1 до 1440 минут.");
-            return CompletableFuture.completedFuture(null);
+            throw new IllegalArgumentException("Некорректная длительность мута: " + duration);
         }
 
         long untilDate = System.currentTimeMillis() / 1000L + duration * 60L;
@@ -102,19 +127,18 @@ public class ModerationManager implements ModerationService, ModerationAsyncServ
                 .untilDate((int) untilDate)
                 .build();
 
-        return client.executeAsync(request)
-                .thenAccept(response -> {
-                    log.info("Пользователь замучен: userId={}", userId);
-                    sendIfNotEmpty(messageToUser, userId);
-                    sendIfNotEmpty(messageToChat, serverId);
-                })
-                .exceptionally(e -> {
-                    log.error("Ошибка при муте: userId={}, serverId={}, error={}", userId, serverId, e.getMessage(), e);
-                    msv.sendMessage(serverId, "Ошибка при муте: " + getFriendlyErrorMessage(e.getMessage()));
-                    return null;
-                });
+        executorService.submit(() -> {
+            try {
+                client.execute(request);
+                log.info("Пользователь замучен: userId={}", userId);
+                sendIfNotEmpty(messageToUser, userId);
+                sendIfNotEmpty(messageToChat, serverId);
+            } catch (TelegramApiException e) {
+                log.error("Ошибка при муте: userId={}, serverId={}, error={}", userId, serverId, e.getMessage(), e);
+                msv.sendMessage(serverId, "Ошибка при муте: " + getFriendlyErrorMessage(e.getMessage()));
+            }
+        });
     }
-
 
     /**
      * Асинхронно размутить пользователя, восстанавливая права из опций.
@@ -123,11 +147,10 @@ public class ModerationManager implements ModerationService, ModerationAsyncServ
      * @param messageToChat сообщение в чат (если не пустое)
      * @param messageToUser сообщение пользователю (если не пустое)
      * @param options настройки прав после размутывания
-     * @return CompletableFuture с результатом операции
      * @throws TelegramApiException при ошибках API
      */
     @Override
-    public CompletableFuture<Void> asyncUnmuteUser(long serverId, long userId, String messageToChat, String messageToUser, ChatPermissionsOptions options) throws TelegramApiException {
+    public void asyncUnmuteUser(long serverId, long userId, String messageToChat, String messageToUser, ChatPermissionsOptions options) throws TelegramApiException {
         ChatPermissions permissions = ChatPermissionOptions.buildChatPermissions(options);
         RestrictChatMember request = RestrictChatMember.builder()
                 .chatId(serverId)
@@ -136,135 +159,156 @@ public class ModerationManager implements ModerationService, ModerationAsyncServ
                 .untilDate(0)
                 .build();
 
-        return client.executeAsync(request)
-                .thenAccept(response -> {
-                    log.info("Пользователь размучен: userId={}", userId);
-                    sendIfNotEmpty(messageToUser, userId);
-                    sendIfNotEmpty(messageToChat, serverId);
-                })
-                .exceptionally(e -> {
-                    log.error("Ошибка при размуте: userId={}, serverId={}, error={}", userId, serverId, e.getMessage(), e);
-                    msv.sendMessage(serverId, "Ошибка при размуте: " + e.getMessage());
-                    return null;
-                });
+        executorService.submit(() -> {
+            try {
+                client.execute(request);
+                log.info("Пользователь размучен: userId={}", userId);
+                sendIfNotEmpty(messageToUser, userId);
+                sendIfNotEmpty(messageToChat, serverId);
+            } catch (TelegramApiException e) {
+                log.error("Ошибка при размуте: userId={}, serverId={}, error={}", userId, serverId, e.getMessage(), e);
+                msv.sendMessage(serverId, "Ошибка при размуте: " + e.getMessage());
+            }
+        });
     }
+
     /**
      * Асинхронно получить статус участника в чате.
      * @param serverId ID чата
      * @param userId ID пользователя
-     * @return CompletableFuture со статусом ("creator", "administrator", "member", "restricted", "left", "kicked" или "unknown")
+     * @return Future со статусом ("creator", "administrator", "member", "restricted", "left", "kicked" или "unknown")
      */
     @Override
-    public CompletableFuture<String> asyncStatusMember(String serverId, long userId) {
+    public Future<String> asyncStatusMember(String serverId, long userId) {
         String cacheKey = serverId + ":" + userId;
         String cachedStatus = memberStatusCache.getIfPresent(cacheKey);
         if (cachedStatus != null) {
             log.debug("Статус пользователя из кэша: userId={}, serverId={}, status={}", userId, serverId, cachedStatus);
-            return CompletableFuture.completedFuture(cachedStatus);
+            return executorService.submit(() -> cachedStatus);
         }
-        return getChatMember(serverId, userId)
-                .thenApply(member -> {
-                    String status = member != null ? member.getStatus() : "unknown";
-                    memberStatusCache.put(cacheKey, status);
-                    log.debug("Статус пользователя сохранён в кэш: userId={}, serverId={}, status={}", userId, serverId, status);
-                    return status;
-                })
-                .exceptionally(e -> {
-                    log.error("Ошибка при получении статуса: userId={}, serverId={}, error={}", userId, serverId, e.getMessage(), e);
-                    return "error";
-                });
+
+        return executorService.submit(() -> {
+            try {
+                ChatMember member = getChatMember(serverId, userId).get();
+                String status = member != null ? member.getStatus() : "unknown";
+                memberStatusCache.put(cacheKey, status);
+                log.debug("Статус пользователя сохранён в кэш: userId={}, serverId={}, status={}", userId, serverId, status);
+                return status;
+            } catch (Exception e) {
+                log.error("Ошибка при получении статуса: userId={}, serverId={}, error={}", userId, serverId, e.getMessage(), e);
+                return "error";
+            }
+        });
     }
 
     /**
      * Асинхронно проверить, является ли пользователь владельцем чата.
      * @param serverId ID чата
      * @param userId ID пользователя
-     * @return CompletableFuture с результатом проверки
+     * @return Future с результатом проверки
      */
     @Override
-    public CompletableFuture<Boolean> asyncHasOwner(String serverId, long userId) {
-        return asyncStatusMember(serverId, userId)
-                .thenApply("creator"::equals)
-                .exceptionally(e -> {
-                    log.error("Ошибка при проверке владельца: userId={}, serverId={}, error={}", userId, serverId, e.getMessage(), e);
-                    return false;
-                });
+    public Future<Boolean> asyncHasOwner(String serverId, long userId) {
+        return executorService.submit(() -> {
+            try {
+                return "creator".equals(asyncStatusMember(serverId, userId).get());
+            } catch (Exception e) {
+                log.error("Ошибка при проверке владельца: userId={}, serverId={}, error={}", userId, serverId, e.getMessage(), e);
+                return false;
+            }
+        });
     }
+
     /**
      * Асинхронно проверить, является ли пользователь администратором чата.
      * @param serverId ID чата
      * @param userId ID пользователя
-     * @return CompletableFuture с результатом проверки
+     * @return Future с результатом проверки
      */
     @Override
-    public CompletableFuture<Boolean> asyncHasAdmin(String serverId, long userId) {
-        return asyncStatusMember(serverId, userId)
-                .thenApply("administrator"::equals)
-                .exceptionally(e -> {
-                    log.error("Ошибка при проверке администратора: userId={}, serverId={}, error={}", userId, serverId, e.getMessage(), e);
-                    return false;
-                });
+    public Future<Boolean> asyncHasAdmin(String serverId, long userId) {
+        return executorService.submit(() -> {
+            try {
+                return "administrator".equals(asyncStatusMember(serverId, userId).get());
+            } catch (Exception e) {
+                log.error("Ошибка при проверке администратора: userId={}, serverId={}, error={}", userId, serverId, e.getMessage(), e);
+                return false;
+            }
+        });
     }
+
     /**
      * Асинхронно проверить, является ли пользователь обычным участником чата.
      * @param serverId ID чата
      * @param userId ID пользователя
-     * @return CompletableFuture с результатом проверки
+     * @return Future с результатом проверки
      */
     @Override
-    public CompletableFuture<Boolean> asyncHasMember(String serverId, long userId) {
-        return asyncStatusMember(serverId, userId)
-                .thenApply("member"::equals)
-                .exceptionally(e -> {
-                    log.error("Ошибка при проверке member: userId={}, serverId={}, error={}", userId, serverId, e.getMessage(), e);
-                    return false;
-                });
+    public Future<Boolean> asyncHasMember(String serverId, long userId) {
+        return executorService.submit(() -> {
+            try {
+                return "member".equals(asyncStatusMember(serverId, userId).get());
+            } catch (Exception e) {
+                log.error("Ошибка при проверке member: userId={}, serverId={}, error={}", userId, serverId, e.getMessage(), e);
+                return false;
+            }
+        });
     }
+
     /**
      * Асинхронно проверить, находится ли пользователь в ограниченном статусе.
      * @param serverId ID чата
      * @param userId ID пользователя
-     * @return CompletableFuture с результатом проверки
+     * @return Future с результатом проверки
      */
     @Override
-    public CompletableFuture<Boolean> asyncHasRestricted(String serverId, long userId) {
-        return asyncStatusMember(serverId, userId)
-                .thenApply("restricted"::equals)
-                .exceptionally(e -> {
-                    log.error("Ошибка при проверке restricted: userId={}, serverId={}, error={}", userId, serverId, e.getMessage(), e);
-                    return false;
-                });
+    public Future<Boolean> asyncHasRestricted(String serverId, long userId) {
+        return executorService.submit(() -> {
+            try {
+                return "restricted".equals(asyncStatusMember(serverId, userId).get());
+            } catch (Exception e) {
+                log.error("Ошибка при проверке restricted: userId={}, serverId={}, error={}", userId, serverId, e.getMessage(), e);
+                return false;
+            }
+        });
     }
+
     /**
      * Асинхронно проверить, покинул ли пользователь чат.
      * @param serverId ID чата
      * @param userId ID пользователя
-     * @return CompletableFuture с результатом проверки
+     * @return Future с результатом проверки
      */
     @Override
-    public CompletableFuture<Boolean> asyncHasLeft(String serverId, long userId) {
-        return asyncStatusMember(serverId, userId)
-                .thenApply("left"::equals)
-                .exceptionally(e -> {
-                    log.error("Ошибка при проверке left: userId={}, serverId={}, error={}", userId, serverId, e.getMessage(), e);
-                    return false;
-                });
+    public Future<Boolean> asyncHasLeft(String serverId, long userId) {
+        return executorService.submit(() -> {
+            try {
+                return "left".equals(asyncStatusMember(serverId, userId).get());
+            } catch (Exception e) {
+                log.error("Ошибка при проверке left: userId={}, serverId={}, error={}", userId, serverId, e.getMessage(), e);
+                return false;
+            }
+        });
     }
+
     /**
      * Асинхронно проверить, был ли пользователь кикнут из чата.
      * @param serverId ID чата
      * @param userId ID пользователя
-     * @return CompletableFuture с результатом проверки
+     * @return Future с результатом проверки
      */
     @Override
-    public CompletableFuture<Boolean> asyncHasKicked(String serverId, long userId) {
-        return asyncStatusMember(serverId, userId)
-                .thenApply("kicked"::equals)
-                .exceptionally(e -> {
-                    log.error("Ошибка при проверке kicked: userId={}, serverId={}, error={}", userId, serverId, e.getMessage(), e);
-                    return false;
-                });
+    public Future<Boolean> asyncHasKicked(String serverId, long userId) {
+        return executorService.submit(() -> {
+            try {
+                return "kicked".equals(asyncStatusMember(serverId, userId).get());
+            } catch (Exception e) {
+                log.error("Ошибка при проверке kicked: userId={}, serverId={}, error={}", userId, serverId, e.getMessage(), e);
+                return false;
+            }
+        });
     }
+
     /**
      * Забанить пользователя синхронно (обёртка над asyncBanUser).
      * @param serverId ID чата
@@ -277,8 +321,19 @@ public class ModerationManager implements ModerationService, ModerationAsyncServ
      */
     @Override
     public void banUser(long serverId, long userId, int duration, Boolean revokeMessages, String messageToChat, String messageToUser) throws TelegramApiException {
-        asyncBanUser(serverId, userId, duration, revokeMessages, messageToChat, messageToUser).join();
+        asyncBanUser(serverId, userId, duration, revokeMessages, messageToChat, messageToUser);
     }
+
+    /**
+     * @param serverId ID сервера/чата
+     * @param userId   Id пользователя
+     * @throws TelegramApiException при ошибки Telegram API
+     */
+    @Override
+    public void unBanUser(long serverId, long userId) throws TelegramApiException {
+        asyncUnBanUser(serverId, userId);
+    }
+
     /**
      * Замутить пользователя синхронно (обёртка над asyncMuteUser).
      * @param serverId ID чата
@@ -291,8 +346,9 @@ public class ModerationManager implements ModerationService, ModerationAsyncServ
      */
     @Override
     public void muteUser(long serverId, long userId, int duration, String messageToChat, String messageToUser, ChatPermissionsOptions options) throws TelegramApiException {
-        asyncMuteUser(serverId, userId, duration, messageToChat, messageToUser, options).join();
+        asyncMuteUser(serverId, userId, duration, messageToChat, messageToUser, options);
     }
+
     /**
      * Размутить пользователя синхронно (обёртка над asyncUnmuteUser).
      * @param serverId ID чата
@@ -304,7 +360,7 @@ public class ModerationManager implements ModerationService, ModerationAsyncServ
      */
     @Override
     public void unmuteUser(long serverId, long userId, String messageToChat, String messageToUser, ChatPermissionsOptions options) throws TelegramApiException {
-        asyncUnmuteUser(serverId, userId, messageToChat, messageToUser, options).join();
+        asyncUnmuteUser(serverId, userId, messageToChat, messageToUser, options);
     }
 
     /**
@@ -315,8 +371,14 @@ public class ModerationManager implements ModerationService, ModerationAsyncServ
      */
     @Override
     public String statusMember(String serverId, long userId) {
-        return asyncStatusMember(serverId, userId).join();
+        try {
+            return asyncStatusMember(serverId, userId).get();
+        } catch (Exception e) {
+            log.error("Ошибка при получении статуса синхронно: userId={}, serverId={}, error={}", userId, serverId, e.getMessage(), e);
+            return "error";
+        }
     }
+
     /**
      * Проверить, является ли пользователь владельцем синхронно.
      * @param serverId ID чата
@@ -325,8 +387,14 @@ public class ModerationManager implements ModerationService, ModerationAsyncServ
      */
     @Override
     public boolean hasOwner(String serverId, long userId) {
-        return asyncHasOwner(serverId, userId).join();
+        try {
+            return asyncHasOwner(serverId, userId).get();
+        } catch (Exception e) {
+            log.error("Ошибка при проверке владельца синхронно: userId={}, serverId={}, error={}", userId, serverId, e.getMessage(), e);
+            return false;
+        }
     }
+
     /**
      * Проверить, является ли пользователь администратором синхронно.
      * @param serverId ID чата
@@ -335,8 +403,14 @@ public class ModerationManager implements ModerationService, ModerationAsyncServ
      */
     @Override
     public boolean hasAdmin(String serverId, long userId) {
-        return asyncHasAdmin(serverId, userId).join();
+        try {
+            return asyncHasAdmin(serverId, userId).get();
+        } catch (Exception e) {
+            log.error("Ошибка при проверке администратора синхронно: userId={}, serverId={}, error={}", userId, serverId, e.getMessage(), e);
+            return false;
+        }
     }
+
     /**
      * Проверить, является ли пользователь обычным участником синхронно.
      * @param serverId ID чата
@@ -345,8 +419,14 @@ public class ModerationManager implements ModerationService, ModerationAsyncServ
      */
     @Override
     public boolean hasMember(String serverId, long userId) {
-        return asyncHasMember(serverId, userId).join();
+        try {
+            return asyncHasMember(serverId, userId).get();
+        } catch (Exception e) {
+            log.error("Ошибка при проверке участника синхронно: userId={}, serverId={}, error={}", userId, serverId, e.getMessage(), e);
+            return false;
+        }
     }
+
     /**
      * Проверить, находится ли пользователь в статусе restricted синхронно.
      * @param serverId ID чата
@@ -355,8 +435,14 @@ public class ModerationManager implements ModerationService, ModerationAsyncServ
      */
     @Override
     public boolean hasRestricted(String serverId, long userId) {
-        return asyncHasRestricted(serverId, userId).join();
+        try {
+            return asyncHasRestricted(serverId, userId).get();
+        } catch (Exception e) {
+            log.error("Ошибка при проверке ограниченного статуса синхронно: userId={}, serverId={}, error={}", userId, serverId, e.getMessage(), e);
+            return false;
+        }
     }
+
     /**
      * Проверить, покинул ли пользователь чат синхронно.
      * @param serverId ID чата
@@ -365,8 +451,14 @@ public class ModerationManager implements ModerationService, ModerationAsyncServ
      */
     @Override
     public boolean hasLeft(String serverId, long userId) {
-        return asyncHasLeft(serverId, userId).join();
+        try {
+            return asyncHasLeft(serverId, userId).get();
+        } catch (Exception e) {
+            log.error("Ошибка при проверке статуса left синхронно: userId={}, serverId={}, error={}", userId, serverId, e.getMessage(), e);
+            return false;
+        }
     }
+
     /**
      * Проверить, был ли пользователь кикнут синхронно.
      * @param serverId ID чата
@@ -375,8 +467,14 @@ public class ModerationManager implements ModerationService, ModerationAsyncServ
      */
     @Override
     public boolean hasKicked(String serverId, long userId) {
-        return asyncHasKicked(serverId, userId).join();
+        try {
+            return asyncHasKicked(serverId, userId).get();
+        } catch (Exception e) {
+            log.error("Ошибка при проверке статуса kicked синхронно: userId={}, serverId={}, error={}", userId, serverId, e.getMessage(), e);
+            return false;
+        }
     }
+
     /**
      * Отправить сообщение в чат, если текст не пустой.
      * @param message текст сообщения
@@ -387,62 +485,69 @@ public class ModerationManager implements ModerationService, ModerationAsyncServ
             msv.sendMessage(chatId, message);
         }
     }
+
     /**
      * Получить информацию об участнике чата.
      * @param serverId ID чата
      * @param userId ID пользователя
-     * @return CompletableFuture с объектом ChatMember
+     * @return Future с объектом ChatMember
      */
-    public CompletableFuture<ChatMember> getChatMember(String serverId, long userId) {
+    public Future<ChatMember> getChatMember(String serverId, long userId) {
         GetChatMember request = new GetChatMember(serverId, userId);
-        try {
-            return client.executeAsync(request);
-        } catch (TelegramApiException e) {
-            log.error("Ошибка при получении участника: userId={}, serverId={}, error={}", userId, serverId, e.getMessage(), e);
-            return CompletableFuture.failedFuture(e);
-        }
+        return executorService.submit(() -> {
+            try {
+                return client.execute(request);
+            } catch (TelegramApiException e) {
+                log.error("Ошибка при получении участника: userId={}, serverId={}, error={}", userId, serverId, e.getMessage(), e);
+                throw e;
+            }
+        });
     }
+
     /**
      * Асинхронно получить ID бота.
-     * @return CompletableFuture с ID бота
+     * @return Future с ID бота
      */
-    public CompletableFuture<Long> asyncGetBotId() {
-        try {
-            return client.executeAsync(new org.telegram.telegrambots.meta.api.methods.GetMe())
-                    .thenApply(User::getId);
-        } catch (TelegramApiException e) {
-            log.error("Ошибка при получении ID бота: {}", e.getMessage(), e);
-            return CompletableFuture.failedFuture(e);
-        }
+    public Future<Long> asyncGetBotId() {
+        return executorService.submit(() -> {
+            try {
+                return client.execute(new org.telegram.telegrambots.meta.api.methods.GetMe()).getId();
+            } catch (TelegramApiException e) {
+                log.error("Ошибка при получении ID бота: {}", e.getMessage(), e);
+                throw e;
+            }
+        });
     }
+
     /**
      * Синхронно получить ID бота.
      * @return ID бота
      */
     @SuppressWarnings("all")
     public Long getBotId() {
-        return asyncGetBotId().join();
+        try {
+            return asyncGetBotId().get();
+        } catch (Exception e) {
+            log.error("Ошибка при получении ID бота синхронно: {}", e.getMessage(), e);
+            return null;
+        }
     }
+
     /**
      * Получить статус из кэша или обновить его из Telegram API.
      * @param cacheKey ключ для кэша (serverId:userId)
      * @param serverId ID чата
      * @param userId ID пользователя
-     * @return CompletableFuture со статусом
+     * @return Future со статусом
      */
     @SuppressWarnings("all")
-    private CompletableFuture<String> getCachedOrFetchStatus(@NonNull String cacheKey, @NonNull String serverId, long userId) {
+    private Future<String> getCachedOrFetchStatus(@NonNull String cacheKey, @NonNull String serverId, long userId) {
         String cachedStatus = memberStatusCache.getIfPresent(cacheKey);
         if (cachedStatus != null) {
             log.debug("Статус из кэша: key={}, status={}", cacheKey, cachedStatus);
-            return CompletableFuture.completedFuture(cachedStatus);
+            return executorService.submit(() -> cachedStatus);
         }
-        return asyncStatusMember(serverId, userId)
-                .thenApply(status -> {
-                    memberStatusCache.put(cacheKey, status);
-                    log.debug("Статус сохранён в кэш: key={}, status={}", cacheKey, status);
-                    return status;
-                });
+        return asyncStatusMember(serverId, userId);
     }
 
     /**
@@ -457,5 +562,23 @@ public class ModerationManager implements ModerationService, ModerationAsyncServ
             case "can't remove chat owner" -> "Нельзя замутить владельца чата.";
             default -> "Неизвестная ошибка: " + error;
         };
+    }
+
+    /**
+     * Завершает пул потоков при уничтожении бина.
+     */
+    @PreDestroy
+    public void shutdown() {
+        executorService.shutdown();
+        try {
+            if (!executorService.awaitTermination(60, TimeUnit.SECONDS)) {
+                executorService.shutdownNow();
+                log.warn("Принудительное завершение пула потоков");
+            }
+        } catch (InterruptedException e) {
+            executorService.shutdownNow();
+            log.error("Ошибка при закрытии пула потоков: {}", e.getMessage(), e);
+            Thread.currentThread().interrupt();
+        }
     }
 }

@@ -41,6 +41,14 @@ public interface MessageService {
     void sendReplayMessage(MessageContext context, String text);
 
     /**
+     * Отправить ответ на сообщение в контексте.
+     *
+     * @param context Контекст сообщения
+     * @param text    Текст ответа
+     * @param options Опции сообщения.
+     */
+    void sendReplayMessage(MessageContext context, String text, MessageOptions options);
+    /**
      * Переслать сообщение из одного чата в другой.
      *
      * @param context     Контекст исходного сообщения

@@ -15,7 +15,7 @@
 
     <groupId>io.github.nyg404</groupId>
     <artifactId>ttigfaer</artifactId>
-    <version>1.8</version>
+    <version>1.8.1</version>
     <packaging>jar</packaging>
 
     <name>ttigfaer</name>
