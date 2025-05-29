@@ -5,6 +5,7 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.telegram.telegrambots.meta.api.objects.CallbackQuery;
 import org.telegram.telegrambots.meta.api.objects.Update;
+import org.telegram.telegrambots.meta.api.objects.User;
 import org.telegram.telegrambots.meta.api.objects.message.Message;
 
 import java.util.Arrays;
@@ -26,6 +27,9 @@ public class MessageContext {
 
     /** ID чата, откуда пришло сообщение или callback */
     private final Long chatId;
+
+    /** Объект {@link User}.*/
+    private final User user;
 
     /** Объект {@link Message}, представляющий исходное сообщение */
     private final Message message;
@@ -75,11 +79,14 @@ public class MessageContext {
             this.callbackData = CallbackData.fromString(callbackQuery.getData());
             this.messageText = null; // Callback не имеет текста сообщения
             this.messageArgs = Collections.emptyList();
+            this.user = callbackQuery.getFrom();
         } else {
             this.message = update.getMessage();
             this.callbackData = null;
             this.messageText = message.getText() != null ? message.getText() : "";
             this.messageArgs = parseArgs(messageText);
+            this.user = message.getFrom();
+
         }
 
         this.userId = isCallback ? update.getCallbackQuery().getFrom().getId() : message.getFrom().getId();
@@ -121,6 +128,7 @@ public class MessageContext {
      *
      * @return {@link Message}, на которое ответили, или null
      */
+    @SuppressWarnings("all")
     public Message getRepliedMessage() {
         return message.getReplyToMessage();
     }

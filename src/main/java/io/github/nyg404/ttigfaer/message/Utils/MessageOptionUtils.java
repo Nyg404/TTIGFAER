@@ -1,12 +1,10 @@
 package io.github.nyg404.ttigfaer.message.Utils;
 
-import io.github.nyg404.ttigfaer.message.MessageService;
 import io.github.nyg404.ttigfaer.message.Options.*;
 import org.telegram.telegrambots.meta.api.methods.send.*;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageMedia;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText;
 import org.telegram.telegrambots.meta.api.objects.InputFile;
-import org.telegram.telegrambots.meta.api.objects.media.InputMedia;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 
 /**
@@ -237,7 +235,7 @@ public class MessageOptionUtils {
         }
     }
 
-    public static void applyMediaOptions(SendMediaGroup.SendMediaGroupBuilder builder, MediaOptions options) {
+    public static void applyMediaOptions(SendMediaGroup.SendMediaGroupBuilder<SendMediaGroup, ?> builder, MediaOptions options) {
         if (options == null) return;
 
         builder

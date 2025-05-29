@@ -2,7 +2,8 @@ package io.github.nyg404.ttigfaer.core.Commands;
 
 import io.github.nyg404.ttigfaer.api.Interface.CommandHandler;
 import io.github.nyg404.ttigfaer.core.Manager.CommandManager;
-import io.github.nyg404.ttigfaer.message.MessageService;
+import io.github.nyg404.ttigfaer.message.Manager.MessageManager;
+import io.github.nyg404.ttigfaer.message.Manager.ModerationManager;
 import org.springframework.context.annotation.Lazy;
 
 /**
@@ -10,18 +11,21 @@ import org.springframework.context.annotation.Lazy;
  * Содержит ссылки на сервис сообщений и менеджер команд.
  * Позволяет реализовывать конкретные обработчики, используя готовые зависимости.
  */
+@SuppressWarnings("all")
 public abstract class CommandHelper implements CommandHandler {
-    protected final MessageService messageService;
+    protected final MessageManager messageManager;
     protected final CommandManager commandManager;
+    protected final ModerationManager moderationManager;
 
     /**
      * Конструктор CommandHelper.
      *
-     * @param messageService сервис для работы с сообщениями
+     * @param messageManager сервис для работы с сообщениями
      * @param commandManager менеджер команд
      */
-    public CommandHelper(MessageService messageService, @Lazy CommandManager commandManager) {
-        this.messageService = messageService;
+    public CommandHelper(MessageManager messageManager, @Lazy CommandManager commandManager, ModerationManager moderationManager) {
+        this.messageManager = messageManager;
         this.commandManager = commandManager;
+        this.moderationManager = moderationManager;
     }
 }

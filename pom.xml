@@ -15,7 +15,7 @@
 
     <groupId>io.github.nyg404</groupId>
     <artifactId>ttigfaer</artifactId>
-    <version>1.7.5</version>
+    <version>1.8</version>
     <packaging>jar</packaging>
 
     <name>ttigfaer</name>
@@ -114,6 +114,12 @@
             <artifactId>spring-boot-configuration-processor</artifactId>
             <version>${spring-boot.version}</version>
             <optional>true</optional>
+        </dependency>
+
+        <dependency>
+            <groupId>com.github.ben-manes.caffeine</groupId>
+            <artifactId>caffeine</artifactId>
+            <version>3.1.8</version>
         </dependency>
     </dependencies>
 

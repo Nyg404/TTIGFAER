@@ -31,7 +31,6 @@ public class RegisterCustomBot {
     ) throws TelegramApiException {
         TelegramBotsLongPollingApplication application = new TelegramBotsLongPollingApplication();
         CustomBot customBot = bots.getIfAvailable();
-
         if(customBot != null){
             application.registerBot(botSettings.getToken(), customBot);
             log.info("Бот был запущен. {}", botSettings.getToken());
